@@ -1,12 +1,5 @@
 const express = require('express');
-const mysql = require('mysql');
-const session = require('express-session');
-const MySQLStore = require('express-mysql-session')(session);
-const passport = require('passport');
-const LocalStrategy = require('passport-local').Strategy;
-const flash = require('connect-flash');
 const bodyParser = require('body-parser');
-const crypto = require('crypto');
 
 let app = express();
 app.set('view engine', 'ejs');

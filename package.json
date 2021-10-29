@@ -3,23 +3,30 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "<hr>",
   "dependencies": {
     "body-parser": "^1.19.0",
-    "connect-flash": "^0.1.1",
     "ejs": "^3.1.6",
     "express": "^4.17.1",
-    "express-mysql-session": "^2.1.6",
-    "express-session": "^1.17.2",
-    "firebase": "^8.8.1",
-    "mysql": "^2.18.1",
+    "fontfaceobserver": "^2.1.0",
     "nodemon": "^2.0.12",
-    "passport": "^0.4.1",
-    "passport-local": "^1.0.0"
-  }
+    "phaser": "^3.55.2",
+    "phaser3-nineslice": "^0.3.7",
+    "webpack": "^5.60.0",
+    "webpack-cli": "^4.9.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zb2b/gajwa-playground.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zb2b/gajwa-playground/issues"
+  },
+  "homepage": "https://github.com/zb2b/gajwa-playground#readme"
 }

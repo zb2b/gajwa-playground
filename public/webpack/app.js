@@ -1,3 +1,8 @@
+/******/ (() => { // webpackBootstrap
+var __webpack_exports__ = {};
+/*!***************************!*\
+  !*** ./public/project.js ***!
+  \***************************/
 // const FontFaceObserver = require('fontfaceobserver');
 let font = new FontFaceObserver('dgm');
 font.load().then(function () {
@@ -285,3 +290,6 @@ function typewriteText(object, txt, speed) {
         delay: speed
     })
 }
+/******/ })()
+;
+//# sourceMappingURL=app.js.map
