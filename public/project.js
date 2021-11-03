@@ -6,7 +6,7 @@ font.load().then(function () {
     //console.log('font' ,font.family , 'loaded');
 });
 
-const display = {width : 360, height: 680};
+const display = {width : 360, height: 680, centerW : 180, centerH: 340 };
 function device(){
     let varUA = navigator.userAgent.toLowerCase(); //userAgent 값 얻기
 
@@ -78,8 +78,32 @@ let gameStatus = {
         return this.ChapterNum;
     }
 };
+// TODO 변수
 let myLog = {text: null};
 const bodyConfig = {};
+const following = {
+    Start: false,
+    Distance: 0,
+    get start(){
+        return this.Start;
+    },
+    set start(value){
+        this.Start = value;
+    },
+    get distance(){
+        return this.Distance;
+    },
+    set distance(value){
+        this.Distance = value;
+        if(value > 60){
+            var follow = {
+                x: (mainObject.dom.x < charMovePos.player.x) ? charMovePos.player.x - 20 : charMovePos.player.x + 20,
+                y: (mainObject.dom.y < charMovePos.player.y) ? charMovePos.player.y - 20 : charMovePos.player.y + 20
+            }
+            characterMove(mainObject.dom, follow.x, follow.y, 140);
+        }
+    }
+}
 const mainObjConfig = {skip: 0, taskIndex: 0, characterMove: false, look: null};
 const mainObject = {};
 const otherObject = {};
@@ -94,8 +118,9 @@ function preload () {
     this.load.json('line', 'data/line.json');
 
     // UI
-    this.load.image('map', 'image/map-desert.png');
-
+    this.load.image('map1', 'image/map-1.png');
+    this.load.image('map2', 'image/map-2.png');
+    this.load.spritesheet('ui-go-down', 'image/ui-go-down.png', { frameWidth: 37, frameHeight: 30, endFrame: 1 });
     // maps
     this.load.image('talkbox', 'image/talkbox.png');
 
@@ -121,7 +146,7 @@ function create () {
     // TODO: 로그 및 디버그
     const LogContainer = this.add.container(0, 0).setVisible(false);
     myLog = this.add.text(6, 2, 'main-0', fontConfig).setFontSize(16);
-    const myLogBox = this.add.rectangle(display.width * 0.5, 8, display.width, 24, 0x333333, 1);
+    const myLogBox = this.add.rectangle(display.centerW, 8, display.width, 24, 0x333333, 1);
     LogContainer.add([myLogBox, myLog]);
     this.physics.world.drawDebug = false;
     this.input.keyboard.addKey('TAB').on('down', function(event) {
@@ -138,19 +163,12 @@ function create () {
     })
     // 키코드 디버그 window.addEventListener("keydown", function (event) { console.log(event); })
 
-    // 터치 포인터 위치 리턴
-    function charMove(pos) {
-        charMovePos.player.x = pos.x;
-        charMovePos.player.y = pos.y;
-        mainObjConfig.look = null;
-        mainObject.character.setFlipX(pos.x < mainObject.character.x);
-        game.scene.scenes[0].physics.moveToObject(mainObject.character, {x: pos.x, y: pos.y}, 180);
-        mainObject.character.play('run');
-    }
+    // TODO 터치 포인터 위치 리턴
     this.input.on('pointerup', function (pointer)
     {
-        // if(pointer.y < 120) return;
-        if(mainObjConfig.characterMove === true) charMove(pointer);
+        if(mainObjConfig.characterMove === true) {
+            characterMove(mainObject.player, pointer.x, pointer.y, 160);
+        }
     }, this);
 
     // TODO: JSON LINES TO ARRAY
@@ -166,14 +184,14 @@ function create () {
     console.log(line);
 
     ui.startgame = this.add.text(0, 0, 'SHADE OF MYZY\nSTART', fontConfig).setAlign('center');
-    InitObject(ui.startgame, display.width * 0.5, display.height * 0.5, 0.5, false);
+    InitObject(ui.startgame, display.centerW, display.centerH, 0.5, false);
 
     // TODO: 스토리 시작 메인 텍스트 설정
     ui.mainText = this.add.text(0, 0, line.story[0][0], fontConfig).setVisible(false).setAlign('center');
-    InitObject(ui.mainText, display.width * 0.5, display.height * 0.5, 0.5,true);
+    InitObject(ui.mainText, display.centerW, display.centerH, 0.5,true);
 
     // TODO: 전체화면 스킵 오브젝트
-    ui.skip = this.add.rectangle(display.width * 0.5, display.height * 0.5, display.width, display.height, 0x00ff00, 0).setVisible(true);
+    ui.skip = this.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0).setVisible(true);
     ui.skip.setInteractive().setVisible(true);
     ui.skip.on('pointerup', function () {
         if(gameStatus.chapter === 'main'){
@@ -203,11 +221,11 @@ function create () {
     });
     // TODO: 챕터 타이틀 텍스트 설정
     ui.chapterText = this.add.text(0, 0, line.chapter[0], fontConfig).setVisible(false).setAlign('center');
-    InitObject(ui.chapterText, display.width * 0.5, display.height * 0.5, 0.5,true);
+    InitObject(ui.chapterText, display.centerW, display.centerH, 0.5,true);
 
     // TODO: 메인 대화창 설정
-    ui.talkBox = this.add.container(display.width * 0.5, display.height * 0.5 + 140).setVisible(false);
-    ui.talkText = this.add.text(-display.width * 0.5 + 40, 32, '', fontConfig).setAlign('left').setFontSize(16).setLineSpacing(8);
+    ui.talkBox = this.add.container(display.centerW, display.centerH + 140).setVisible(false);
+    ui.talkText = this.add.text(-display.centerW + 40, 32, '', fontConfig).setAlign('left').setFontSize(16).setLineSpacing(8);
     ui.talkBackground = this.add.rexNinePatch({
         x: 0, y: 0,
         width: display.width - 20, height: 180,
@@ -227,25 +245,30 @@ function create () {
             gameStatus.idx++;
             if(line.story[1][gameStatus.idx] === 'close'){
                 talkClosed();
+                mainObjConfig.taskIndex++;
             }
             if(gameStatus.idx === 2) {
-                game.scene.scenes[0].tweens.killTweensOf(mainObject.character);
+                game.scene.scenes[0].tweens.killTweensOf(mainObject.player);
                 game.scene.scenes[0].tweens.add({
-                    targets: mainObject.character,
+                    targets: mainObject.player,
                     alpha: 0.2,
                     duration: 3200
                 });
             }
             else if(gameStatus.idx === 3) {
-                game.scene.scenes[0].tweens.killTweensOf(mainObject.character);
+                game.scene.scenes[0].tweens.killTweensOf(mainObject.player);
                 game.scene.scenes[0].tweens.add({
-                    targets: mainObject.character,
+                    targets: mainObject.player,
                     alpha: 1,
                     duration: 400
                 });
             }
-            else if(gameStatus.idx === 4) mainObject.character.play('seek');
-            else if(gameStatus.idx === 5) mainObject.character.play('stand');
+            else if(gameStatus.idx === 4) mainObject.player.play('seek');
+            else if(gameStatus.idx === 5) mainObject.player.play('stand');
+            else if(gameStatus.idx === 19) {
+                ui.godown.setVisible(true).play('godown');
+                bodyConfig.godown.active = true;
+            }
         }
         else {
             console.log('null index line');
@@ -255,64 +278,92 @@ function create () {
     }
 
     // TODO: 미션 텍스트
-    ui.taskBox = this.add.container(display.width * 0.5, 60).setVisible(false);
+    ui.taskBox = this.add.container(display.centerW, 16 + 24).setVisible(false);
     ui.taskText = this.add.text(0, 0, line.task[mainObjConfig.taskIndex], fontConfig).setOrigin(0.5).setFontSize(16);
     ui.taskBackground = this.add.rectangle(0, 0, display.width, 32, 0x000000).setOrigin(0.5);
     ui.taskBox.add([ui.taskBackground, ui.taskText]);
+    // TODO 기타 UI 오브젝트 그룹
+    ui.others = this.add.container(0, 0);
+    ui.godown = this.physics.add.sprite(display.centerW, display.height - 20, 'ui-go-down').setOrigin(0.5, 1)
+        .setScale(2).setVisible(false).setSize(display.width, 30);
+    ui.blink = this.physics.add.sprite(display.centerW + 80, 180, 'blink').setOrigin(0.5, 1)
+        .setScale(2).setVisible(false);
+    ui.others.add([ui.godown, ui.blink] );
 
     // TODO: 캐릭터 생성
     setAnims();
     mainObject.group = this.add.container();
-    mainObject.character = this.physics.add.sprite(display.width * 0.5, display.height * 0.5 - 10, 'stand')
+    mainObject.player = this.physics.add.sprite(display.centerW, 180, 'stand')
         .play('stand').setOrigin(0.5, 1).setScale(2).setVisible(false);
 
-    mainObject.dom = this.physics.add.sprite(display.width * 0.5 + 80, display.height * 0.5 - 10, 'dom-idle')
+    mainObject.dom = this.physics.add.sprite(display.centerW + 80, 180, 'dom-idle')
         .play('dom-stand').setOrigin(0.5, 1).setScale(2).setVisible(false);
 
-    ui.bg = this.add.sprite(display.width * 0.5, display.height * 0.5, 'map').setScale(2).setVisible(false);
+    ui.bg = [];
+    ui.bg[1] = this.add.sprite(display.centerW, display.centerH, 'map1').setScale(2).setVisible(false);
+    ui.bg[2] = this.add.sprite(display.centerW, display.centerH, 'map2').setScale(2).setVisible(false);
 
     // TODO: 기타 효과 오브젝트 생성
-    otherObject.blink = this.physics.add.sprite(display.width * 0.5 + 80, display.height * 0.5 - 10, 'blink')
-        .setScale(2).setVisible(false);
-    bodyConfig.blink = this.physics.add.overlap(mainObject.character, otherObject.blink, onCol, null, this);
-    bodyConfig.dom = this.physics.add.overlap(mainObject.character, mainObject.dom, onCol, null, this);
+
+    bodyConfig.dom = this.physics.add.overlap(mainObject.player, mainObject.dom, onCol, null, this);
+    bodyConfig.godown = this.physics.add.overlap(mainObject.player, ui.godown, onCol, null, this);
+    bodyConfig.blink = this.physics.add.overlap(mainObject.player, ui.blink, onCol, null, this);
+
     bodyConfig.blink.active = false;
     bodyConfig.dom.active = false;
+    bodyConfig.godown.active = false;
 
-    mainObject.group.add([mainObject.character, mainObject.dom, otherObject.blink]);
+
+    mainObject.group.add([mainObject.player, mainObject.dom]);
 
     // TODO: 물리 설정
     function onCol(player, obj) {
-        if(obj === otherObject.blink){
+        if(obj === ui.blink){
             bodyConfig.blink.active = false
             var movePos = {x: mainObject.dom.x - 40, y: mainObject.dom.y};
-            charMove({x: movePos.x, y: movePos.y});
+            characterMove(player, movePos.x, movePos.y, 160);
             mainObjConfig.characterMove = false;
             obj.setVisible(false);
             mainObject.dom.setVisible(true);
             looking(mainObject.dom, movePos, false);
             mainObjConfig.look = mainObject.dom;
-            mainObjConfig.taskIndex++;
             talk();
         }
         else if(obj === mainObject.dom){
-            characterMove(mainObject.character, obj.x + 40, obj.y, 160);
+            characterMove(mainObject.player, obj.x + 40, obj.y, 160);
             mainObjConfig.look = mainObject.dom;
             bodyConfig.dom.active = false;
             mainObjConfig.characterMove = false;
             looking(mainObject.dom, charMovePos.player, false);
             talk();
         }
+        else if(obj === ui.godown){
+            obj.setVisible(false);
+            characterMove(mainObject.player, display.centerW, display.height + 120, 160);
+            bodyConfig.godown.active = false;
+            mainObjConfig.characterMove = false;
+            ui.taskBox.setVisible(false);
+            game.scene.scenes[0].tweens.add({
+                targets: ui.bg[1],
+                alpha: 0,
+                duration: 1400,
+                onComplete: function () {
+                    gameStatus.chapter = 'chapter-' + (parseInt(gameStatus.chapterNum) + 1);
+                    gameStatus.idx = 0;
+                }
+            });
+        }
     }
 
     // 레이어 정리
     mainObject.layer = this.add.layer();
-    mainObject.layer.add(ui.bg);
+    mainObject.layer.add(ui.bg[1]);
+    mainObject.layer.add(ui.bg[2]);
     mainObject.layer.add(mainObject.group);
+    mainObject.layer.add(ui.others);
     mainObject.layer.add(ui.talkBox);
     mainObject.layer.add(ui.taskBox);
     mainObject.layer.add(ui.skip);
-    mainObject.layer.add(ui.bg);
     mainObject.layer.add(LogContainer);
 }
 
@@ -346,12 +397,18 @@ function setAnims() {
     scene.anims.create({
         key: 'dom-run',
         frames: scene.anims.generateFrameNumbers('dom-run', { start: 0, end: 1, first: 0 }),
-        frameRate: 4,
+        frameRate: 8,
         repeat: -1
     });
     scene.anims.create({
         key: 'blink',
         frames: scene.anims.generateFrameNumbers('blink', { start: 0, end: 1, first: 0 }),
+        frameRate: 2,
+        repeat: -1
+    });
+    scene.anims.create({
+        key: 'godown',
+        frames: scene.anims.generateFrameNumbers('ui-go-down', { start: 0, end: 1, first: 0 }),
         frameRate: 2,
         repeat: -1
     });
@@ -370,9 +427,11 @@ function chapter(chapterNum) {
     ui.chapterText.alpha = 0;
     // 챕터 타이틀 애니메이션
     if(mainObjConfig.skip !== 0){
+        mainObjConfig.skip = 0;
         startChapter();
         return;
     }
+    ui.chapterText.text = line.chapter[gameStatus.chapterNum];
     game.scene.scenes[0].tweens.add({
         targets: ui.chapterText,
         alpha: 1,
@@ -384,16 +443,26 @@ function chapter(chapterNum) {
 }
 // 챕터 시작
 function startChapter() {
-    ui.talkBox.setVisible(true);
-    ui.bg.setVisible(true);
-    mainObject.character.setVisible(true).setAlpha(0);
-    game.scene.scenes[0].tweens.add({
-        targets: mainObject.character,
-        alpha: 1,
-        duration: 3200,
-        ease: 'linear'
-    });
-    typewriteText(ui.talkText, line.story[1][0], 100);
+    var chapNum = gameStatus.chapterNum;
+    if(chapNum === 1){
+        ui.talkBox.setVisible(true);
+        ui.bg[1].setVisible(true);
+        mainObject.player.setVisible(true).setAlpha(0);
+        game.scene.scenes[0].tweens.add({
+            targets: mainObject.player,
+            alpha: 1,
+            duration: 3200,
+            ease: 'linear'
+        });
+        typewriteText(ui.talkText, line.story[1][0], 100);
+    }
+    else if(chapNum === 2){
+        mainObject.player.y = -120;
+        mainObject.dom.y = -120;
+        characterMove(mainObject.player, display.centerW, 120, 160);
+        ui.bg[2].setVisible(true);
+    }
+    
 }
 // TODO: 대화 종료
 function talkClosed() {
@@ -404,25 +473,38 @@ function talkClosed() {
     ui.taskText.text = line.task[mainObjConfig.taskIndex];
 
     if(gameStatus.chapterNum === 1){
-        setTimeout(function () {
-            if(gameStatus.idx < 7){
+        if(gameStatus.idx < 7){
+            setTimeout(function () {
                 bodyConfig.blink.active = true;
-                otherObject.blink.setVisible(true).play('blink');
-            }
-        }, 2400);
-        if(gameStatus.idx === 12){
-            mainObject.dom.play('dom-run');
-            characterMove(mainObject.dom, display.width * 0.5, 160, 120);
+                ui.blink.setVisible(true).play('blink');
+            }, 2400);
+        }
+        else if(gameStatus.idx === 12){
+            characterMove(mainObject.dom, display.centerW - 10, display.centerH + 80, 120);
+        }
+        else if(gameStatus.idx === 19){
+            following.start = true;
         }
     }
 
 }
 function characterMove(character, x, y, speed) {
     var name;
-    if(character === mainObject.character) name = 'player'
-    else if(character === mainObject.dom) name = 'dom'
+    if(character === mainObject.player) {
+        name = 'player';
+        if(character.anims.currentAnim.key !== 'run') character.play('run');
+    }
+    else if(character === mainObject.dom) {
+        name = 'dom';
+        if(character.anims.currentAnim.key !== 'dom-run') character.play('dom-run');
+    }
     charMovePos[name].x = x;
     charMovePos[name].y = y;
+
+    mainObjConfig.look = null;
+    character.setFlipX(x < character.x);
+
+
     game.scene.scenes[0].physics.moveToObject(character, {x: x, y: y}, speed);
 }
 function looking(character, target, each) {
@@ -433,11 +515,18 @@ function update () {
     // TODO 업데이트
     // 터치 포지션 근접시 리셋
     let dis = {
-        player: Phaser.Math.Distance.Between(mainObject.character.x, mainObject.character.y, charMovePos.player.x, charMovePos.player.y),
+        player: Phaser.Math.Distance.Between(mainObject.player.x, mainObject.player.y, charMovePos.player.x, charMovePos.player.y),
         dom: Phaser.Math.Distance.Between(mainObject.dom.x, mainObject.dom.y, charMovePos.dom.x, charMovePos.dom.y)
     };
-    if (mainObject.character.body.speed > 0)
+    if (mainObject.player.body.speed > 0)
     {
+        if(following.start) {
+            var gap = dis.player < Phaser.Math.Distance.Between(mainObject.dom.x, mainObject.dom.y, charMovePos.player.x, charMovePos.player.y);
+            if(gap){
+                following.distance = Phaser.Math.Distance.Between
+                (mainObject.player.x, mainObject.player.y, mainObject.dom.x, mainObject.dom.y);
+            }
+        }
         // 캐릭터 레이어 변경
         mainObject.group.list.sort(function(a, b) {
             return a.y > b.y ? 1 : -1;
@@ -446,10 +535,10 @@ function update () {
         // 정지
         if (dis.player < 4)
         {
-            mainObject.character.body.reset(charMovePos.player.x, charMovePos.player.y);
-            mainObject.character.play('stand');
+            mainObject.player.body.reset(charMovePos.player.x, charMovePos.player.y);
+            mainObject.player.play('stand');
             if(mainObjConfig.look !== null){
-                looking(mainObject.character, mainObjConfig.look, false);
+                looking(mainObject.player, mainObjConfig.look, false);
             }
         }
     }
@@ -465,7 +554,8 @@ function update () {
         {
             mainObject.dom.body.reset(charMovePos.dom.x, charMovePos.dom.y);
             mainObject.dom.play('dom-stand');
-            bodyConfig.dom.active = true;
+            if(!following.start) bodyConfig.dom.active = true;
+            else following.Move = false;
         }
     }
 }
