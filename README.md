@@ -7,7 +7,7 @@ This is Gajwa-playground project.
 Base on Phaser.js
 
 ### version info
-- ver 0.0.1
+- ver 0.1.1
 
 #### Start server
 - server.js
