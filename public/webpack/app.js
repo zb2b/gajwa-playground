@@ -48,7 +48,7 @@ const config = {
 };
 const fontConfig = {font: '32px "dgm"', color: '#fff'};
 const game = new Phaser.Game(config);
-// TODO: 게임 상태 변경
+// TODO: 게임 상태 매니저
 let gameStatus = {
     Chapter: 'load',
     ChapterNum: 0,
@@ -89,6 +89,7 @@ const bodyConfig = {};
 const following = {
     Start: false,
     Distance: 0,
+    isMoving: false,
     get start(){
         return this.Start;
     },
@@ -100,12 +101,13 @@ const following = {
     },
     set distance(value){
         this.Distance = value;
-        if(value > 60){
+        if(value > 60 && this.isMoving){
             var follow = {
                 x: (mainObject.dom.x < charMovePos.player.x) ? charMovePos.player.x - 20 : charMovePos.player.x + 20,
                 y: (mainObject.dom.y < charMovePos.player.y) ? charMovePos.player.y - 20 : charMovePos.player.y + 20
             }
-            characterMove(mainObject.dom, follow.x, follow.y, 140);
+            characterMove(mainObject.dom, follow.x, follow.y, 160);
+            this.isMoving = false;
         }
     }
 }
@@ -137,6 +139,8 @@ function preload () {
     this.load.spritesheet('dom-idle', 'image/dom-stand.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
     this.load.spritesheet('dom-run', 'image/dom-run.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
 
+    this.load.spritesheet('cowboy', 'image/cowboy-stand.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
+
     // another animation
     this.load.spritesheet('blink', 'image/blink.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
 
@@ -165,6 +169,11 @@ function create () {
     });
     this.input.keyboard.addKey(49).on('down', function(event) {
         mainObjConfig.skip = 1;
+        console.log('SKIP TO' ,1);
+    })
+    this.input.keyboard.addKey(50).on('down', function(event) {
+        mainObjConfig.skip = 2;
+        console.log('SKIP TO' ,2);
     })
     // 키코드 디버그 window.addEventListener("keydown", function (event) { console.log(event); })
 
@@ -173,6 +182,7 @@ function create () {
     {
         if(mainObjConfig.characterMove === true) {
             characterMove(mainObject.player, pointer.x, pointer.y, 160);
+            if(following.start) following.isMoving = true;
         }
     }, this);
 
@@ -201,6 +211,7 @@ function create () {
     ui.skip.on('pointerup', function () {
         if(gameStatus.chapter === 'main'){
             if(mainObjConfig.skip !== 0){
+                mainObjConfig.isSkipped = true;
                 gameStatus.chapter = 'chapter-' + mainObjConfig.skip.toString();
                 gameStatus.idx = 0;
                 ui.skip.disableInteractive().setVisible(false);
@@ -289,11 +300,12 @@ function create () {
     ui.taskBox.add([ui.taskBackground, ui.taskText]);
     // TODO 기타 UI 오브젝트 그룹
     ui.others = this.add.container(0, 0);
+    ui.black = this.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000).setVisible(false).setAlpha(0);
     ui.godown = this.physics.add.sprite(display.centerW, display.height - 20, 'ui-go-down').setOrigin(0.5, 1)
         .setScale(2).setVisible(false).setSize(display.width, 30);
     ui.blink = this.physics.add.sprite(display.centerW + 80, 180, 'blink').setOrigin(0.5, 1)
         .setScale(2).setVisible(false);
-    ui.others.add([ui.godown, ui.blink] );
+    ui.others.add([ui.godown, ui.blink, ui.black]);
 
     // TODO: 캐릭터 생성
     setAnims();
@@ -303,6 +315,9 @@ function create () {
 
     mainObject.dom = this.physics.add.sprite(display.centerW + 80, 180, 'dom-idle')
         .play('dom-stand').setOrigin(0.5, 1).setScale(2).setVisible(false);
+
+    mainObject.cowboy = this.physics.add.sprite(display.centerW + 60, 120, 'cowboy')
+        .play('cowboy-stand').setOrigin(0.5, 1).setScale(2).setVisible(false);
 
     ui.bg = [];
     ui.bg[1] = this.add.sprite(display.centerW, display.centerH, 'map1').setScale(2).setVisible(false);
@@ -319,7 +334,7 @@ function create () {
     bodyConfig.godown.active = false;
 
 
-    mainObject.group.add([mainObject.player, mainObject.dom]);
+    mainObject.group.add([mainObject.player, mainObject.dom, mainObject.cowboy]);
 
     // TODO: 물리 설정
     function onCol(player, obj) {
@@ -344,19 +359,11 @@ function create () {
         }
         else if(obj === ui.godown){
             obj.setVisible(false);
+            following.isMoving = true;
             characterMove(mainObject.player, display.centerW, display.height + 120, 160);
             bodyConfig.godown.active = false;
             mainObjConfig.characterMove = false;
-            ui.taskBox.setVisible(false);
-            game.scene.scenes[0].tweens.add({
-                targets: ui.bg[1],
-                alpha: 0,
-                duration: 1400,
-                onComplete: function () {
-                    gameStatus.chapter = 'chapter-' + (parseInt(gameStatus.chapterNum) + 1);
-                    gameStatus.idx = 0;
-                }
-            });
+            toNextChapter();
         }
     }
 
@@ -406,6 +413,12 @@ function setAnims() {
         repeat: -1
     });
     scene.anims.create({
+        key: 'cowboy-stand',
+        frames: scene.anims.generateFrameNumbers('cowboy', { start: 0, end: 1, first: 0 }),
+        frameRate: 4,
+        repeat: -1
+    });
+    scene.anims.create({
         key: 'blink',
         frames: scene.anims.generateFrameNumbers('blink', { start: 0, end: 1, first: 0 }),
         frameRate: 2,
@@ -423,6 +436,23 @@ function story() {
     console.log('스토리 시작');
     ui.mainText.setVisible(true);
     ShakeObject(ui.mainText, 20, 20, 240);
+}
+function toNextChapter(){
+    var next = parseInt(gameStatus.chapterNum) + 1;
+    ui.talkBox.setVisible(false);
+    ui.taskBox.setVisible(false);
+    ui.black.setVisible(true);
+    game.scene.scenes[0].tweens.add({
+        targets: ui.black,
+        alpha: 1,
+        duration: 1400,
+        onComplete: function () {
+            gameStatus.chapter = 'chapter-' + next;
+            gameStatus.idx = 0;
+            ui.bg[next - 1].setVisible(false);
+            ui.black.setVisible(false);
+        }
+    });
 }
 function chapter(chapterNum) {
     // TODO: 챕터 시작
@@ -449,9 +479,9 @@ function chapter(chapterNum) {
 // 챕터 시작
 function startChapter() {
     var chapNum = gameStatus.chapterNum;
+    ui.bg[chapNum].setVisible(true);
     if(chapNum === 1){
         ui.talkBox.setVisible(true);
-        ui.bg[1].setVisible(true);
         mainObject.player.setVisible(true).setAlpha(0);
         game.scene.scenes[0].tweens.add({
             targets: mainObject.player,
@@ -462,10 +492,17 @@ function startChapter() {
         typewriteText(ui.talkText, line.story[1][0], 100);
     }
     else if(chapNum === 2){
+        if(mainObjConfig.isSkipped){
+            following.start = true;
+            mainObject.player.setVisible(true);
+            mainObject.dom.setVisible(true);
+            mainObject.dom.x = display.centerW - 20;
+        }
         mainObject.player.y = -120;
         mainObject.dom.y = -120;
-        characterMove(mainObject.player, display.centerW, 120, 160);
-        ui.bg[2].setVisible(true);
+        mainObject.cowboy.setVisible(true);
+        following.isMoving = true;
+        characterMove(mainObject.player, display.centerW, 100, 160);
     }
     
 }
@@ -485,7 +522,7 @@ function talkClosed() {
             }, 2400);
         }
         else if(gameStatus.idx === 12){
-            characterMove(mainObject.dom, display.centerW - 10, display.centerH + 80, 120);
+            characterMove(mainObject.dom, display.centerW - 10, display.centerH + 80, 160);
         }
         else if(gameStatus.idx === 19){
             following.start = true;
