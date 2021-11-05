@@ -40,6 +40,16 @@ const config = {
     },
     parent: 'canvas',
     pixelArt: true,
+    plugins: {
+        scene: [
+            {
+                key: "PhaserNavMeshPlugin", // Key to store the plugin class under in cache
+                plugin: PhaserNavMeshPlugin, // Class that constructs plugins
+                mapping: "navMeshPlugin", // Property mapping to use for the scene, e.g. this.navMeshPlugin
+                start: true
+            },
+        ]
+    }
 };
 const fontConfig = {font: '32px "dgm"', color: '#fff'};
 const game = new Phaser.Game(config);
@@ -126,6 +136,10 @@ function preload () {
     this.load.image('talkbox', 'image/talkbox.png');
     this.load.image('building', 'image/building.png');
 
+    // tile map
+    this.load.tilemapTiledJSON("map", "map/map.json");
+    this.load.image("tileset", "map/tileset.png");
+
     // character animation
     this.load.spritesheet('player', 'image/player.png', { frameWidth: 32, frameHeight: 32, endFrame: 8 });
 
@@ -138,28 +152,63 @@ function preload () {
     this.load.spritesheet('blink', 'image/blink.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
 
     // plugins
-    var url_nine = 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexninepatchplugin.min.js';
-    this.load.plugin('rexninepatchplugin', url_nine, true);
+    this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
+
 }
+function pathfinder() {
+
+}
+
 function create () {
+    const graphics = this.add.graphics().setVisible(false);
+    mainObject.tile = this.add.container();
+    mainObject.tilemap = this.add.tilemap("map");
+    const tileset = mainObject.tilemap.addTilesetImage("colortile", "tileset");
+    const wallLayer = mainObject.tilemap.createLayer("walls", tileset).setCollisionByProperty({ collides: true }).setVisible(false);
+    const navMesh = this.navMeshPlugin.buildMeshFromTilemap("mesh", mainObject.tilemap, [wallLayer]);
+    mainObject.tile.add([wallLayer, graphics])
+
+    this.input.on("pointerdown", pointer => {
+        graphics.clear();
+        const p2 = { x: pointer.x, y: pointer.y };
+        mainObjConfig.path = navMesh.findPath(mainObject.player, p2);
+        if(mainObjConfig.path === null) {
+            return;
+        }
+        var line = new Phaser.Curves.Path(mainObject.player.x, mainObject.player.y);
+        for (var i = 0; i < mainObjConfig.path.length; i++)
+        {
+            line.lineTo(mainObjConfig.path[i].x, mainObjConfig.path[i].y);
+        }
+        graphics.lineStyle(1, 0xff0000, 1);
+        line.draw(graphics);
+    });
+
     gameStatus.chapter = 'main';
     gameStatus.idx = 0;
 
     // TODO: 로그 및 디버그
+    mainObjConfig.graphics = this.add.graphics();
     const LogContainer = this.add.container(0, 0).setVisible(false);
     myLog = this.add.text(6, 2, 'main-0', fontConfig).setFontSize(16);
-    const myLogBox = this.add.rectangle(display.centerW, 8, display.width, 24, 0x333333, 1);
+    const myLogBox = this.add.rectangle(display.centerW, 8, display.width, 24, 0xff0000, 1);
     LogContainer.add([myLogBox, myLog]);
     this.physics.world.drawDebug = false;
     this.input.keyboard.addKey('TAB').on('down', function(event) {
-        LogContainer.setVisible(true);
-        game.scene.scenes[0].physics.world.drawDebug = true;
-    }).on('up', function(event) {
-        LogContainer.setVisible(false);
-        game.config.physics.arcade.drawDebug = true;
-        game.scene.scenes[0].physics.world.drawDebug = false;
-        game.scene.scenes[0].physics.world.debugGraphic.clear();
+        if(!LogContainer.visible){
+            LogContainer.setVisible(true);
+            game.scene.scenes[0].physics.world.drawDebug = true;
+        }
+        else {
+            LogContainer.setVisible(false);
+            game.config.physics.arcade.drawDebug = true;
+            game.scene.scenes[0].physics.world.drawDebug = false;
+            game.scene.scenes[0].physics.world.debugGraphic.clear();
+        }
     });
+    this.input.keyboard.addKey('Q').on('down', function(event) {
+        mainObjConfig.characterMove = !mainObjConfig.characterMove;
+    })
     this.input.keyboard.addKey(49).on('down', function(event) {
         mainObjConfig.skip = 1;
         console.log('SKIP TO' ,1);
@@ -170,11 +219,21 @@ function create () {
     })
     // 키코드 디버그 window.addEventListener("keydown", function (event) { console.log(event); })
 
+    // TODO 패스파인더 생성
+
+
     // TODO 터치 포인터 위치 리턴
     this.input.on('pointerup', function (pointer)
     {
         if(mainObjConfig.characterMove === true) {
-            characterMove(mainObject.player, pointer.x, pointer.y, 160);
+            if(mainObjConfig.path === null){
+                mainObjConfig.pathCount = 0;
+                mainObjConfig.path = [{x: mainObject.player.x, y: mainObject.player.y}];
+            }
+            else {
+                mainObjConfig.pathCount = 1;
+            }
+            characterMove(mainObject.player, mainObjConfig.path[mainObjConfig.pathCount].x, mainObjConfig.path[mainObjConfig.pathCount].y, 160);
             if(following.start) following.isMoving = true;
         }
     }, this);
@@ -332,8 +391,8 @@ function create () {
     ui.bg = this.add.sprite(display.centerW, display.centerH, 'bg').setScale(2).setFrame(0).setVisible(false);
 
     // TODO 배경 오브젝트 생성
-    otherObject.building = this.physics.add.sprite(display.centerW, display.centerH + 100, 'building').setOrigin(0.5, 1)
-        .setScale(2).setVisible(false).setSize(64, 91 - 40).setOffset(0, 40).setImmovable();
+    otherObject.building = this.add.sprite(display.centerW, display.centerH + 100, 'building').setOrigin(0.5, 1)
+        .setScale(2).setVisible(false);
 
 
 
@@ -341,8 +400,6 @@ function create () {
     bodyConfig.dom = this.physics.add.overlap(mainObject.player, mainObject.dom, onCol, null, this);
     bodyConfig.godown = this.physics.add.overlap(mainObject.player, ui.godown, onCol, null, this);
     bodyConfig.blink = this.physics.add.overlap(mainObject.player, ui.blink, onCol, null, this);
-
-    bodyConfig.building = this.physics.add.collider(mainObject.player, otherObject.building, onCol, null, this);
 
     bodyConfig.blink.active = false;
     bodyConfig.dom.active = false;
@@ -387,7 +444,7 @@ function create () {
         }
     }
 
-    // 레이어 정리
+    // TODO 레이어 정리
     mainObject.layer = this.add.layer();
     mainObject.layer.add(ui.bg);
     mainObject.layer.add(mainObject.group);
@@ -396,6 +453,7 @@ function create () {
     mainObject.layer.add(ui.taskBox);
     mainObject.layer.add(ui.skip);
     mainObject.layer.add(LogContainer);
+    mainObject.layer.add(mainObject.tile);
 }
 
 function setAnims() {
@@ -556,7 +614,6 @@ function characterMove(character, x, y, speed) {
     mainObjConfig.look = null;
     character.setFlipX(x < character.x);
 
-
     game.scene.scenes[0].physics.moveToObject(character, {x: x, y: y}, speed);
 }
 function looking(character, target, each) {
@@ -587,11 +644,21 @@ function update () {
         // 정지
         if (dis.player < 4)
         {
-            mainObject.player.body.reset(charMovePos.player.x, charMovePos.player.y);
-            mainObject.player.play('stand');
-            if(mainObjConfig.look !== null){
-                looking(mainObject.player, mainObjConfig.look, false);
+            if(mainObjConfig.path !== null){
+                if(mainObjConfig.path.length > mainObjConfig.pathCount + 1){
+                    mainObjConfig.pathCount++;
+                    characterMove(mainObject.player, mainObjConfig.path[mainObjConfig.pathCount].x, mainObjConfig.path[mainObjConfig.pathCount].y, 160);
+                    if(following.start) following.isMoving = true;
+                }
+                else {
+                    mainObject.player.body.reset(charMovePos.player.x, charMovePos.player.y);
+                    mainObject.player.play('stand');
+                    if(mainObjConfig.look !== null){
+                        looking(mainObject.player, mainObjConfig.look, false);
+                    }
+                }
             }
+
         }
     }
     if (mainObject.dom.body.speed > 0)
