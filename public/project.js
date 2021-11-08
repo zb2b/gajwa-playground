@@ -106,17 +106,9 @@ const following = {
     },
     set distance(value){
         this.Distance = value;
-        if(value > 60 && this.isMoving){
-            var follow = {
-                x: (mainObject.dom.x < charMovePos.player.x) ? charMovePos.player.x - 20 : charMovePos.player.x + 20,
-                y: (mainObject.dom.y < charMovePos.player.y) ? charMovePos.player.y - 20 : charMovePos.player.y + 20
-            }
-            characterMove(mainObject.dom, follow.x, follow.y, 160);
-            this.isMoving = false;
-        }
     }
 }
-const mainObjConfig = {skip: 0, taskIndex: 0, characterMove: false, look: null};
+const mainConfig = {skip: 0, taskIndex: 0, isPlayerMovable: false, look: null, path: null, pathDom: null, pathCount: 0, pathcountDom: 0};
 const mainObject = {};
 const otherObject = {};
 const charMovePos = {player: {x: 0, y: 0}, dom: {x: 0, y:0}};
@@ -137,13 +129,13 @@ function preload () {
     this.load.image('building', 'image/building.png');
 
     // tile map
-    this.load.tilemapTiledJSON("map", "map/map.json");
+    this.load.tilemapTiledJSON("map", "map/maps.json");
     this.load.image("tileset", "map/tileset.png");
 
     // character animation
     this.load.spritesheet('player', 'image/player.png', { frameWidth: 32, frameHeight: 32, endFrame: 8 });
 
-    this.load.spritesheet('dom-idle', 'image/dom-stand.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
+    this.load.spritesheet('dom-stand', 'image/dom-stand.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
     this.load.spritesheet('dom-run', 'image/dom-run.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
 
     this.load.spritesheet('cowboy', 'image/cowboy-stand.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
@@ -155,44 +147,42 @@ function preload () {
     this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
 
 }
-function pathfinder() {
-
-}
-
 function create () {
-    const graphics = this.add.graphics().setVisible(false);
+    mainConfig.graphicsDom = this.add.graphics();
+    mainConfig.graphics = this.add.graphics();
+    mainConfig.graphics.lineStyle(1, 0x0000ff, 1);
+
     mainObject.tile = this.add.container();
     mainObject.tilemap = this.add.tilemap("map");
     const tileset = mainObject.tilemap.addTilesetImage("colortile", "tileset");
-    const wallLayer = mainObject.tilemap.createLayer("walls", tileset).setCollisionByProperty({ collides: true }).setVisible(false);
-    const navMesh = this.navMeshPlugin.buildMeshFromTilemap("mesh", mainObject.tilemap, [wallLayer]);
-    mainObject.tile.add([wallLayer, graphics])
+    const wallLayer = mainObject.tilemap.createLayer("walls", tileset).setCollisionByProperty({ collides: true }).setAlpha(0.5);
+    const objectLayer = mainObject.tilemap.getObjectLayer("navmesh");
+    mainConfig.navMesh = this.navMeshPlugin.buildMeshFromTiled("mesh", objectLayer, 12.5);
+    mainObject.tile.add([mainConfig.graphics, mainConfig.graphicsDom])
 
     this.input.on("pointerdown", pointer => {
-        graphics.clear();
+        mainConfig.graphics.clear();
         const p2 = { x: pointer.x, y: pointer.y };
-        mainObjConfig.path = navMesh.findPath(mainObject.player, p2);
-        if(mainObjConfig.path === null) {
+        mainConfig.path = mainConfig.navMesh.findPath(mainObject.player, p2);
+        if(mainConfig.path === null) {
             return;
         }
         var line = new Phaser.Curves.Path(mainObject.player.x, mainObject.player.y);
-        for (var i = 0; i < mainObjConfig.path.length; i++)
+        for (var i = 0; i < mainConfig.path.length; i++)
         {
-            line.lineTo(mainObjConfig.path[i].x, mainObjConfig.path[i].y);
+            line.lineTo(mainConfig.path[i].x, mainConfig.path[i].y);
         }
-        graphics.lineStyle(1, 0xff0000, 1);
-        line.draw(graphics);
+        line.draw(mainConfig.graphics);
     });
 
     gameStatus.chapter = 'main';
     gameStatus.idx = 0;
 
     // TODO: 로그 및 디버그
-    mainObjConfig.graphics = this.add.graphics();
     const LogContainer = this.add.container(0, 0).setVisible(false);
     myLog = this.add.text(6, 2, 'main-0', fontConfig).setFontSize(16);
     const myLogBox = this.add.rectangle(display.centerW, 8, display.width, 24, 0xff0000, 1);
-    LogContainer.add([myLogBox, myLog]);
+    LogContainer.add([myLogBox, myLog, wallLayer]);
     this.physics.world.drawDebug = false;
     this.input.keyboard.addKey('TAB').on('down', function(event) {
         if(!LogContainer.visible){
@@ -207,33 +197,30 @@ function create () {
         }
     });
     this.input.keyboard.addKey('Q').on('down', function(event) {
-        mainObjConfig.characterMove = !mainObjConfig.characterMove;
+        mainConfig.isPlayerMovable = !mainConfig.isPlayerMovable;
     })
     this.input.keyboard.addKey(49).on('down', function(event) {
-        mainObjConfig.skip = 1;
+        mainConfig.skip = 1;
         console.log('SKIP TO' ,1);
     })
     this.input.keyboard.addKey(50).on('down', function(event) {
-        mainObjConfig.skip = 2;
+        mainConfig.skip = 2;
         console.log('SKIP TO' ,2);
     })
     // 키코드 디버그 window.addEventListener("keydown", function (event) { console.log(event); })
 
-    // TODO 패스파인더 생성
-
-
     // TODO 터치 포인터 위치 리턴
     this.input.on('pointerup', function (pointer)
     {
-        if(mainObjConfig.characterMove === true) {
-            if(mainObjConfig.path === null){
-                mainObjConfig.pathCount = 0;
-                mainObjConfig.path = [{x: mainObject.player.x, y: mainObject.player.y}];
+        if(mainConfig.isPlayerMovable === true) {
+            if(mainConfig.path === null){
+                mainConfig.pathCount = 0;
+                mainConfig.path = [{x: mainObject.player.x, y: mainObject.player.y}];
             }
             else {
-                mainObjConfig.pathCount = 1;
+                mainConfig.pathCount = 1;
             }
-            characterMove(mainObject.player, mainObjConfig.path[mainObjConfig.pathCount].x, mainObjConfig.path[mainObjConfig.pathCount].y, 160);
+            characterMove(mainObject.player, mainConfig.path[mainConfig.pathCount], 160);
             if(following.start) following.isMoving = true;
         }
     }, this);
@@ -262,9 +249,9 @@ function create () {
     ui.skip.setInteractive().setVisible(true);
     ui.skip.on('pointerup', function () {
         if(gameStatus.chapter === 'main'){
-            if(mainObjConfig.skip !== 0){
-                mainObjConfig.isSkipped = true;
-                gameStatus.chapter = 'chapter-' + mainObjConfig.skip.toString();
+            if(mainConfig.skip !== 0){
+                mainConfig.isSkipped = true;
+                gameStatus.chapter = 'chapter-' + mainConfig.skip.toString();
                 gameStatus.idx = 0;
                 ui.skip.disableInteractive().setVisible(false);
                 ui.startgame.setVisible(false);
@@ -314,7 +301,7 @@ function create () {
             gameStatus.idx++;
             if(line.story[chapter][gameStatus.idx] === 'close'){
                 talkClosed();
-                mainObjConfig.taskIndex++;
+                mainConfig.taskIndex++;
             }
             if(chapter === 1){
                 if(gameStatus.idx === 2) {
@@ -342,7 +329,11 @@ function create () {
                     }, 2400);
                 }
                 else if(gameStatus.idx === 12){
-                    characterMove(mainObject.dom, display.centerW - 10, display.centerH + 80, 160);
+                    var target = {
+                        x: display.centerW - 10,
+                        y: display.centerH + 80
+                    }
+                    characterMove(mainObject.dom, target, 160);
                 }
                 else if(gameStatus.idx === 19){
                     following.start = true;
@@ -391,7 +382,7 @@ function create () {
     ui.bg = this.add.sprite(display.centerW, display.centerH, 'bg').setScale(2).setFrame(0).setVisible(false);
 
     // TODO 배경 오브젝트 생성
-    otherObject.building = this.add.sprite(display.centerW, display.centerH + 100, 'building').setOrigin(0.5, 1)
+    otherObject.building = this.add.sprite(display.centerW, display.centerH + 90, 'building').setOrigin(0.5, 1)
         .setScale(2).setVisible(false);
 
 
@@ -414,33 +405,35 @@ function create () {
     function onCol(player, obj) {
         if(obj === ui.blink){
             bodyConfig.blink.active = false
-            var movePos = {x: mainObject.dom.x - 40, y: mainObject.dom.y};
-            characterMove(player, movePos.x, movePos.y, 160);
-            mainObjConfig.characterMove = false;
+            var target = {x: mainObject.dom.x - 40, y: mainObject.dom.y};
+            mainConfig.isPlayerMovable = false;
             obj.setVisible(false);
             mainObject.dom.setVisible(true);
-            looking(mainObject.dom, movePos, false);
-            mainObjConfig.look = mainObject.dom;
+            characterMove(player, target, 160);
+            looking(mainObject.dom, target, false);
+            mainConfig.look = mainObject.dom;
             talk();
         }
         else if(obj === mainObject.dom){
-            characterMove(mainObject.player, obj.x + 40, obj.y, 160);
-            mainObjConfig.look = mainObject.dom;
+            var target = {x: obj.x + 40, y: obj.y};
+            characterMove(mainObject.player, target, 160);
+            mainConfig.look = mainObject.dom;
             bodyConfig.dom.active = false;
-            mainObjConfig.characterMove = false;
+            mainConfig.isPlayerMovable = false;
             looking(mainObject.dom, charMovePos.player, false);
             talk();
         }
         else if(obj === ui.godown){
             obj.setVisible(false);
             following.isMoving = true;
-            characterMove(mainObject.player, display.centerW, display.height + 120, 160);
+            var target = {x: display.centerW, y: display.height + 120};
+            characterMove(mainObject.player, target, 160);
             bodyConfig.godown.active = false;
-            mainObjConfig.characterMove = false;
+            mainConfig.isPlayerMovable = false;
             toNextChapter();
         }
         else if(obj === otherObject.building){
-            characterMove(player, mainObject.dom.x, mainObject.dom.y, 160);
+            characterMove(player, mainObject.dom, 160);
         }
     }
 
@@ -462,24 +455,25 @@ function setAnims() {
     scene.anims.create({
         key: 'stand',
         frames: scene.anims.generateFrameNumbers('player', { start: 0, end: 1, first: 0 }),
-        frameRate: 4,
-        repeat: -1
-    });
-    scene.anims.create({
-        key: 'run',
-        frames: scene.anims.generateFrameNumbers('player', { start: 2, end: 5, first: 0 }),
-        frameRate: 8,
-        repeat: -1
-    });
-    scene.anims.create({
-        key: 'seek',
-        frames: scene.anims.generateFrameNumbers('player', { start: 6, end: 7, first: 0 }),
         frameRate: 2,
         repeat: -1
     });
     scene.anims.create({
+        key: 'seek',
+        frames: scene.anims.generateFrameNumbers('player', { start: 2, end: 3, first: 0 }),
+        frameRate: 2,
+        repeat: -1
+    });
+    scene.anims.create({
+        key: 'run',
+        frames: scene.anims.generateFrameNumbers('player', { start: 4, end: 7, first: 0 }),
+        frameRate: 8,
+        repeat: -1
+    });
+
+    scene.anims.create({
         key: 'dom-stand',
-        frames: scene.anims.generateFrameNumbers('dom-idle', { start: 0, end: 1, first: 0 }),
+        frames: scene.anims.generateFrameNumbers('dom-stand', { start: 0, end: 1, first: 0 }),
         frameRate: 4,
         repeat: -1
     });
@@ -538,8 +532,8 @@ function chapter(chapterNum) {
     ui.chapterText.setVisible(true);
     ui.chapterText.alpha = 0;
     // 챕터 타이틀 애니메이션
-    if(mainObjConfig.skip !== 0){
-        mainObjConfig.skip = 0;
+    if(mainConfig.skip !== 0){
+        mainConfig.skip = 0;
         startChapter();
         return;
     }
@@ -556,7 +550,7 @@ function chapter(chapterNum) {
 // 챕터 시작
 function startChapter() {
     ui.talkText.text = '';
-    mainObjConfig.taskIndex = 0;
+    mainConfig.taskIndex = 0;
     var chapNum = gameStatus.chapterNum;
     ui.bg.setVisible(true).setFrame(gameStatus.chapterNum-1);
     if(chapNum === 1){
@@ -571,7 +565,7 @@ function startChapter() {
         typewriteText(ui.talkText, line.story[chapNum][0], 100);
     }
     else if(chapNum === 2){
-        if(mainObjConfig.isSkipped){
+        if(mainConfig.isSkipped){
             following.start = true;
             mainObject.player.setVisible(true);
             mainObject.dom.setVisible(true);
@@ -581,7 +575,7 @@ function startChapter() {
         mainObject.player.y = -120;
         mainObject.dom.y = -120;
         following.isMoving = true;
-        characterMove(mainObject.player, display.centerW, 100, 160);
+        characterMove(mainObject.player, {x: display.centerW, y: 100}, 160);
         var talk = setTimeout(function () {
             ui.talkBox.setVisible(true);
             typewriteText(ui.talkText, line.story[chapNum][0], 100);
@@ -593,12 +587,12 @@ function startChapter() {
 // TODO: 대화 종료
 function talkClosed() {
     // 공통 작업
-    setTimeout(() => mainObjConfig.characterMove = true, 60);
+    setTimeout(() => mainConfig.isPlayerMovable = true, 60);
     ui.talkBox.setVisible(false);
     ui.taskBox.setVisible(true);
-    ui.taskText.text = line.task[gameStatus.chapterNum - 1][mainObjConfig.taskIndex];
+    ui.taskText.text = line.task[gameStatus.chapterNum - 1][mainConfig.taskIndex];
 }
-function characterMove(character, x, y, speed) {
+function characterMove(character, target, speed) {
     var name;
     if(character === mainObject.player) {
         name = 'player';
@@ -608,18 +602,17 @@ function characterMove(character, x, y, speed) {
         name = 'dom';
         if(character.anims.currentAnim.key !== 'dom-run') character.play('dom-run');
     }
-    charMovePos[name].x = x;
-    charMovePos[name].y = y;
-
-    mainObjConfig.look = null;
-    character.setFlipX(x < character.x);
-
-    game.scene.scenes[0].physics.moveToObject(character, {x: x, y: y}, speed);
+    charMovePos[name].x = target.x;
+    charMovePos[name].y = target.y;
+    mainConfig.look = null;
+    character.setFlipX(target.x < character.x);
+    game.scene.scenes[0].physics.moveToObject(character, target, speed);
 }
 function looking(character, target, each) {
     character.setFlipX(character.x > target.x);
     if(each) target.setFlipX(target.x > character.x);
 }
+let step = 0;
 function update () {
     // TODO 업데이트
     // 터치 포지션 근접시 리셋
@@ -629,11 +622,28 @@ function update () {
     };
     if (mainObject.player.body.speed > 0)
     {
-        if(following.start) {
-            var gap = dis.player < Phaser.Math.Distance.Between(mainObject.dom.x, mainObject.dom.y, charMovePos.player.x, charMovePos.player.y);
-            if(gap){
-                following.distance = Phaser.Math.Distance.Between
-                (mainObject.player.x, mainObject.player.y, mainObject.dom.x, mainObject.dom.y);
+        step++;
+        if(step > 80) {
+            step = 0;
+            if(following.start) {
+                if(mainObject.dom.y < 0) {
+                    characterMove(mainObject.dom, mainObject.player, 160);
+                }
+                else {
+                    mainConfig.pathcountDom = 1;
+                    mainConfig.pathDom = mainConfig.navMesh.findPath(mainObject.dom, mainObject.player);
+                    characterMove(mainObject.dom, mainConfig.pathDom[mainConfig.pathcountDom], 160);
+
+                    mainConfig.graphicsDom.clear();
+                    var line = new Phaser.Curves.Path(mainObject.dom.x, mainObject.dom.y);
+                    for (var i = 0; i < mainConfig.pathDom.length; i++)
+                    {
+                        line.lineTo(mainConfig.pathDom[i].x, mainConfig.pathDom[i].y);
+                    }
+                    line.draw(mainConfig.graphicsDom);
+
+                }
+
             }
         }
         // 캐릭터 레이어 변경
@@ -644,38 +654,47 @@ function update () {
         // 정지
         if (dis.player < 4)
         {
-            if(mainObjConfig.path !== null){
-                if(mainObjConfig.path.length > mainObjConfig.pathCount + 1){
-                    mainObjConfig.pathCount++;
-                    characterMove(mainObject.player, mainObjConfig.path[mainObjConfig.pathCount].x, mainObjConfig.path[mainObjConfig.pathCount].y, 160);
+            // 플레이어 경로 따라 이동
+            if(mainConfig.path !== null){
+                // 마지막 경로가 아닐때
+                if(mainConfig.path.length > mainConfig.pathCount + 1){
+                    mainConfig.pathCount++;
+                    characterMove(mainObject.player, mainConfig.path[mainConfig.pathCount], 160);
                     if(following.start) following.isMoving = true;
+                    looking(mainObject.player, mainConfig.path[mainConfig.path.length - 1], false);
                 }
                 else {
                     mainObject.player.body.reset(charMovePos.player.x, charMovePos.player.y);
-                    mainObject.player.play('stand');
-                    if(mainObjConfig.look !== null){
-                        looking(mainObject.player, mainObjConfig.look, false);
+                    if(mainObject.player.anims.currentAnim.key !== 'stand') mainObject.player.play('stand');
+                    if(mainConfig.look !== null){
+                        looking(mainObject.player, mainConfig.look, false);
                     }
                 }
             }
-
         }
     }
     if (mainObject.dom.body.speed > 0)
     {
-        // 캐릭터 레이어 변경
-        mainObject.group.list.sort(function(a, b) {
-            return a.y > b.y ? 1 : -1;
-        });
-
-        // 정지
         if (dis.dom < 4)
         {
             mainObject.dom.body.reset(charMovePos.dom.x, charMovePos.dom.y);
             mainObject.dom.play('dom-stand');
-            if(!following.start) bodyConfig.dom.active = true;
-            else following.Move = false;
+            // 플레이어 경로 따라 이동
+            if(mainConfig.pathDom !== null){
+                // 마지막 경로가 아닐때
+                if(mainConfig.pathDom.length > mainConfig.pathcountDom + 1){
+                    mainConfig.pathcountDom++;
+                    characterMove(mainObject.dom, mainConfig.pathDom[mainConfig.pathcountDom], 160);
+                    looking(mainObject.dom, mainObject.player, false);
+                }
+                else {
+                    mainObject.dom.body.reset(charMovePos.dom.x, charMovePos.dom.y);
+                    if(mainObject.dom.anims.currentAnim.key !== 'dom-stand') mainObject.dom.play('dom-stand');
+                    looking(mainObject.dom, mainObject.player, false);
+                }
+            }
         }
+
     }
 }
 function InitObject(obj, x, y, origin, setInteractive) {

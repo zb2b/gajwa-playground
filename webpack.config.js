@@ -1,6 +1,6 @@
 module.exports = {
     entry:{
-        index : "./public/project.js"
+        index : "./public/rebuild.js"
     },
     output: {
         filename: 'app.js',

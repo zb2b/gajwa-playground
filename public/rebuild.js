@@ -1,8 +1,3 @@
-/******/ (() => { // webpackBootstrap
-var __webpack_exports__ = {};
-/*!***************************!*\
-  !*** ./public/rebuild.js ***!
-  \***************************/
 console.log("%c@ MYZY.SPACE 2021 POWERED BY MYZY_", "color: #00ff00; font-weight: 900; font-size: 1em; background-color: black; padding: 1rem");
 const font = new FontFaceObserver('dgm').load();
 const display = {width : 320, height: 640, centerW : 180, centerH: 340 };
@@ -225,6 +220,3 @@ function path_log() {
     debug.graphics.lineStyle(1, 0xff0000, 1);
     line.draw(debug.graphics);
 }
-/******/ })()
-;
-//# sourceMappingURL=app.js.map
