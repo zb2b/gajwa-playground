@@ -40,6 +40,8 @@ const mainConfig = {
     playerCount : 0,
     playerPath : [],
     playerMovable : false,
+    // 이동 후 바라볼 오브젝트
+    lookAt: null,
 
     domTarget : {x: 0, y: 0},
     domCount : 0,
@@ -47,6 +49,7 @@ const mainConfig = {
     domFollow: false
 }
 const timer = {};
+const event = {};
 const maps = {};
 const ui = {};
 const line = {};
@@ -58,6 +61,7 @@ const status = {
 };
 
 function preload() {
+    // TODO 프리로드
     // data
     this.load.json('text', 'data/text.json');
     // tile
@@ -66,6 +70,10 @@ function preload() {
     // sprites
     this.load.spritesheet('player', 'image/player.png', { frameWidth: 32, frameHeight: 32, endFrame: 7 });
     this.load.spritesheet('dom', 'image/dom.png', { frameWidth: 32, frameHeight: 32, endFrame: 7 });
+    // UI
+    this.load.image('nineslice', 'image/nineslice.png');
+    // plugins
+    this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
 }
 function create() {
     setLines(this);
@@ -79,7 +87,7 @@ function create() {
         mainConfig.playerCount = 1;
         mainConfig.playerPath = maps.navMesh.findPath(mainObject.player, { x: pointer.x, y: pointer.y });
         if(mainConfig.playerPath === null || mainConfig.playerPath.length < 1) return;
-        moveCharacter(mainObject.player);
+        if(mainConfig.playerMovable) moveCharacter(mainObject.player);
         //path_log();
     });
 }
@@ -95,6 +103,10 @@ function update() {
             if(mainConfig.playerPath === null || mainConfig.playerPath.length < 1 || mainConfig.playerPath.length === mainConfig.playerCount + 1) {
                 mainObject.player.body.reset(mainObject.player.x, mainObject.player.y);
                 if(mainObject.player.anims.currentAnim.key !== 'player-stand') mainObject.player.play('player-stand');
+                if(mainConfig.lookAt !== null) {
+                    mainObject.player.setFlipX(mainObject.player.x - mainConfig.lookAt.x > 0);
+                    mainConfig.lookAt = null;
+                }
             }
             else {
                 mainConfig.playerCount++;
@@ -104,7 +116,7 @@ function update() {
         if(dis.each > 80){
             mainConfig.domCount = 1;
             mainConfig.domPath = maps.navMesh.findPath(mainObject.dom, { x: mainObject.player.x, y: mainObject.player.y });
-            moveCharacter(mainObject.dom);
+            if(mainConfig.domFollow) moveCharacter(mainObject.dom);
         }
     }
     if (mainObject.dom.body.speed > 0){
@@ -138,7 +150,7 @@ function buildMap(scene) {
     // 벽 레이어 : maps.wallLayer
     maps.tilemap = scene.add.tilemap("map");
     maps.tileset = maps.tilemap.addTilesetImage("tileset", "tileset");
-    maps.tilemap.createStaticLayer("bg", maps.tileset);
+    maps.tilemap.createLayer("bg", maps.tileset);
     maps.wallLayer = maps.tilemap.createLayer("walls", maps.tileset);
     maps.objectLayer = maps.tilemap.getObjectLayer("navmesh");
     maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer, 12.5);
@@ -149,7 +161,7 @@ function createCharacters(scene) {
     mainObject.player = scene.physics.add.sprite(display.centerW, 180, 'player')
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('player-stand');
     mainObject.dom = scene.physics.add.sprite(display.centerW - 60, 180, 'dom')
-        .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('dom-stand');
+        .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('dom-stand').setVisible(false);
 }
 function createGraphics(scene) {
     // TODO 그래픽 생성
@@ -161,13 +173,24 @@ function createGraphics(scene) {
 function createUIObjects(scene) {
     // TODO UI 오브젝트 생성
     ui.cam = scene.cameras.main;
-    ui.skip = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0)
+    ui.skip = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0.1)
         .setInteractive();
     ui.background = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
     ui.title = scene.add.text(display.centerW, display.centerH, 'SHADOW OF MYZY', fontConfig)
         .setAlign('center').setOrigin(0.5);
     ui.largeText = scene.add.text(display.centerW, display.centerH, '', fontConfig)
         .setAlign('center').setOrigin(0.5).setVisible(false);
+
+    ui.dialogGroup = scene.add.container();
+    ui.dialogBox = scene.add.rexNinePatch({
+        x: display.centerW, y: display.height - 10,
+        width: (display.width - 20) * 0.5, height: 180 * 0.5,
+        key: 'nineslice',
+        columns: [8, undefined, 8],
+        rows: [8, undefined, 8],
+    }).setOrigin(0.5, 1).setScale(2);
+    ui.dialog = scene.add.text(30, display.height - 160, '', fontConfig).setFontSize(16).setLineSpacing(4);
+    ui.dialogGroup.add([ui.dialogBox, ui.dialog]).setVisible(false);
     
     ui.skip.on('pointerup', function () {
         skip();
@@ -181,7 +204,7 @@ function setLayer(scene) {
     mainObject.group.add([mainObject.player, mainObject.dom]);
 
     ui.group = scene.add.container();
-    ui.group.add([ui.background, ui.largeText, ui.title, ui.skip]);
+    ui.group.add([ui.background, ui.dialogGroup, ui.largeText, ui.title, ui.skip]);
 
     // 레이어 정렬
     mainObject.layer.add(mainObject.group);
@@ -216,7 +239,7 @@ function setAnimations(scene) {
     });
     scene.anims.create({
         key: 'dom-run',
-        frames: scene.anims.generateFrameNumbers('dom', { start: 4, end: 7, first: 0 }),
+        frames: scene.anims.generateFrameNumbers('dom', { start: 6, end: 7, first: 0 }),
         frameRate: 8,
         repeat: -1
     });
@@ -235,19 +258,35 @@ function Move(character, target, speed) {
     game.scene.scenes[0].physics.moveToObject(character, target, speed);
 }
 function moveCharacter(character) {
-    if(character === mainObject.player && mainConfig.playerMovable){
+    if(character === mainObject.player){
         mainConfig.playerTarget.x = mainConfig.playerPath[mainConfig.playerCount].x;
         mainConfig.playerTarget.y = mainConfig.playerPath[mainConfig.playerCount].y;
         if(character.anims.currentAnim.key !== 'player-run') character.play('player-run');
         mainObject.player.setFlipX(mainObject.player.x - mainConfig.playerTarget.x > 0);
         Move(mainObject.player, mainConfig.playerTarget, 160);
     }
-    else if(character === mainObject.dom && mainConfig.domFollow){
+    else if(character === mainObject.dom){
         mainConfig.domTarget.x = mainConfig.domPath[mainConfig.domCount].x;
         mainConfig.domTarget.y = mainConfig.domPath[mainConfig.domCount].y;
         if(character.anims.currentAnim.key !== 'dom-run') character.play('dom-run');
         mainObject.dom.setFlipX(mainObject.dom.x - mainConfig.domTarget.x > 0);
         Move(mainObject.dom, mainConfig.domTarget, 160);
+    }
+}
+function moveToPoint(character, x, y){
+    if(character === mainObject.player){
+        mainConfig.playerMovable = false;
+        mainConfig.playerCount = 1;
+        mainConfig.playerPath = maps.navMesh.findPath(mainObject.player, { x: x, y: y });
+        if(mainConfig.playerPath === null || mainConfig.playerPath.length < 1) return;
+        moveCharacter(mainObject.player);
+    }
+    else if(character === mainObject.dom){
+        mainConfig.domFollow = false;
+        mainConfig.domCount = 1;
+        mainConfig.domPath = maps.navMesh.findPath(mainObject.dom, { x: x, y: y });
+        if(mainConfig.domPath === null || mainConfig.domPath.length < 1) return;
+        moveCharacter(mainObject.dom);
     }
 }
 function path_log() {
@@ -288,18 +327,37 @@ function shakeObject(obj, max, speed, time) {
     }
 }
 function typewriteText(object, txt, speed) {
+    eventByIndex();
+    game.scene.scenes[0].time.removeEvent(event.type);
     const length = txt.length
-    let i = 0
-    game.scene.scenes[0].time.addEvent({
-        callback: () => {
-            object.text += txt[i]
-            ++i
-        },
-        repeat: length - 1,
-        delay: speed
-    })
+    // 타이핑 도중에 재실행
+    if(event.typing === true){
+        event.typing = false;
+        object.text = txt;
+        status.index++;
+    }
+    else {
+        object.text = '';
+        let i = 0;
+        event.type = game.scene.scenes[0].time.addEvent({
+            callback: () => {
+                object.text += txt[i]
+                ++i
+                if(i < length){
+                    event.typing = true;
+                }
+                else {
+                    // 타이핑이 끝나고 실행
+                    event.typing = false;
+                    object.text = txt;
+                    status.index++;
+                }
+            },
+            repeat: length - 1,
+            delay: speed
+        })
+    }
 }
-
 // TODO 이벤트 메서드
 function skip() {
     if(status.scene === 'title'){
@@ -314,16 +372,28 @@ function skip() {
         if(line.opening[status.index] === undefined) {
             status.scene = 'chapter';
             status.index = 0;
-            status.chapterIdx = 1;
+            status.chapterIdx = 0;
 
-            ui.group.setVisible(false);
-            mainConfig.playerMovable = true;
-            mainConfig.domFollow = true;
+            ui.background.setVisible(false);
+            ui.largeText.setVisible(false);
+
+            //zoomOut();
+            ui.dialogGroup.setVisible(true);
+            dialog();
+            ui.skip.setInteractive();
+
             function zoomOut() {
+                ui.skip.disableInteractive();
                 ui.cam.zoom = 4;
                 ui.cam.pan(mainObject.player.x, mainObject.player.y - 32, 1);
                 setTimeout(() => ui.cam.pan(display.centerW, display.centerH, 2800, Phaser.Math.Easing.Quintic.InOut, true), 200);
                 ui.cam.zoomTo(1, 3000, Phaser.Math.Easing.Quintic.InOut);
+                ui.cam.on(Phaser.Cameras.Scene2D.Events.ZOOM_COMPLETE, () => {
+                    ui.dialogGroup.setVisible(true);
+                    dialog();
+                    ui.skip.setInteractive();
+                });
+
             }
         }
         else {
@@ -333,6 +403,51 @@ function skip() {
         }
     }
     else if(status.scene === 'chapter'){
+        dialog();
+    }
+}
+function dialog() {
+    if(line.story[status.chapterIdx][status.index] === '*close*'){
+        event.typing = false;
+        ui.dialogGroup.setVisible(false);
+        ui.skip.setVisible(false);
+        eventByIndex();
+        status.index++;
+    }
+    else {
+        typewriteText(ui.dialog, line.story[status.chapterIdx][status.index], 60);
+    }
+}
+function eventByIndex(){
+    let chapter = status.chapterIdx;
+    let index = status.index;
+    let scene = game.scene.scenes[0];
 
+    if(chapter === 0){
+        if(index === 4){
+            mainObject.player.play('player-seek');
+        }
+        if(index === 6){
+            mainObject.player.play('player-stand');
+            setTimeout(() => mainConfig.playerMovable = true, 20);
+            let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
+                console.log('found');
+                col.active = false;
+                setVisibleObjects(true, [mainObject.dom, ui.skip, ui.dialogGroup]);
+                moveToPoint(mainObject.player, mainObject.dom.x + 60, mainObject.dom.y);
+                mainConfig.lookAt = mainObject.dom;
+                dialog();
+            }, null, this);
+        }
+        if(index === 12){
+            setTimeout(() => mainConfig.playerMovable = true, 20);
+            moveToPoint(mainObject.dom, 10, 10);
+        }
+    }
+}
+function setVisibleObjects(bool, arr) {
+    // 배열 오브젝트 모두 setVisible 실행
+    for (let i = 0; i < arr.length; i++) {
+        arr[i].setVisible(bool);
     }
 }
