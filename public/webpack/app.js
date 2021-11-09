@@ -40,6 +40,7 @@ const mainObject = {
     player : 'main player',
     dom : 'dom'
 };
+const object = {};
 const mainConfig = {
     playerTarget : {x: 0, y: 0},
     playerCount : 0,
@@ -47,6 +48,7 @@ const mainConfig = {
     playerMovable : false,
     // 이동 후 바라볼 오브젝트
     lookAt: null,
+    moveFinishedEvent: null,
 
     domTarget : {x: 0, y: 0},
     domCount : 0,
@@ -75,10 +77,13 @@ function preload() {
     // sprites
     this.load.spritesheet('player', 'image/player.png', { frameWidth: 32, frameHeight: 32, endFrame: 7 });
     this.load.spritesheet('dom', 'image/dom.png', { frameWidth: 32, frameHeight: 32, endFrame: 7 });
+    this.load.image("rock", "image/rock.png");
     // UI
     this.load.image('nineslice', 'image/nineslice.png');
     // plugins
     this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
+    // particle
+    this.load.image('particle', 'image/particle.png');
 }
 function create() {
     setLines(this);
@@ -86,6 +91,8 @@ function create() {
     createGraphics(this);
     createUIObjects(this);
     createCharacters(this);
+    createObjects(this);
+    createParticles(this);
     buildMap(this);
     setLayer(this);
     this.input.on('pointerup', pointer => {
@@ -105,38 +112,39 @@ function update() {
     
     if (mainObject.player.body.speed > 0){
         if (dis.player < 4){
+            // 목적지 도착시 플레이어 정지
             if(mainConfig.playerPath === null || mainConfig.playerPath.length < 1 || mainConfig.playerPath.length === mainConfig.playerCount + 1) {
                 mainObject.player.body.reset(mainObject.player.x, mainObject.player.y);
                 if(mainObject.player.anims.currentAnim.key !== 'player-stand') mainObject.player.play('player-stand');
-                if(mainConfig.lookAt !== null) {
-                    mainObject.player.setFlipX(mainObject.player.x - mainConfig.lookAt.x > 0);
-                    mainConfig.lookAt = null;
-                }
+                moveFinished(mainObject.player);
             }
+            // 다음 경로로 변경
             else {
                 mainConfig.playerCount++;
                 moveCharacter(mainObject.player);
             }
         }
-        if(dis.each > 80){
-            mainConfig.domCount = 1;
-            mainConfig.domPath = maps.navMesh.findPath(mainObject.dom, { x: mainObject.player.x, y: mainObject.player.y });
-            if(mainConfig.domFollow) moveCharacter(mainObject.dom);
+        // 플레이어와 멀때 따라가기 경로
+        if(dis.each > 80 && mainConfig.domFollow){
+            moveToPoint(mainObject.dom, mainObject.player.x, mainObject.player.y);
         }
     }
     if (mainObject.dom.body.speed > 0){
         if (dis.dom < 4){
+            // 목적지 도착시 정지
             if(mainConfig.domPath === null || mainConfig.domPath.length < 1 || mainConfig.domPath.length === mainConfig.domCount + 1) {
                 mainObject.dom.body.reset(mainObject.dom.x, mainObject.dom.y);
                 if(mainObject.dom.anims.currentAnim.key !== 'dom-stand') mainObject.dom.play('dom-stand');
+                moveFinished(mainObject.dom);
             }
+            // 다음 경로로 변경
             else {
                 mainConfig.domCount++;
                 moveCharacter(mainObject.dom);
             }
-
         }
-        else if(dis.each < 40){
+        // 플레이어와 가까울때 정지
+        else if(dis.each < 40 && mainConfig.domFollow){
             mainObject.dom.body.reset(mainObject.dom.x, mainObject.dom.y);
             if(mainObject.dom.anims.currentAnim.key !== 'dom-stand') mainObject.dom.play('dom-stand');
         }
@@ -156,7 +164,7 @@ function buildMap(scene) {
     maps.tilemap = scene.add.tilemap("map");
     maps.tileset = maps.tilemap.addTilesetImage("tileset", "tileset");
     maps.tilemap.createLayer("bg", maps.tileset);
-    maps.wallLayer = maps.tilemap.createLayer("walls", maps.tileset);
+    maps.wallLayer = maps.tilemap.createLayer("walls", maps.tileset).setVisible(false);
     maps.objectLayer = maps.tilemap.getObjectLayer("navmesh");
     maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer, 12.5);
 }
@@ -178,7 +186,7 @@ function createGraphics(scene) {
 function createUIObjects(scene) {
     // TODO UI 오브젝트 생성
     ui.cam = scene.cameras.main;
-    ui.skip = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0.1)
+    ui.skip = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0)
         .setInteractive();
     ui.background = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
     ui.title = scene.add.text(display.centerW, display.centerH, 'SHADOW OF MYZY', fontConfig)
@@ -201,18 +209,40 @@ function createUIObjects(scene) {
         skip();
     });
 }
+function createParticles(scene) {
+    let emitZone = new Phaser.Geom.Rectangle(-200, -600, 200, 1200);
+    mainObject.particles = scene.add.particles('particle');
+    let emitter = mainObject.particles.createEmitter({
+        x: 0,
+        y: 0,
+        speed: 80,
+        gravityX: 120,
+        gravityY: 100,
+        lifespan: 6000,
+        quantity: 0.5,
+        scale: 2,
+        emitZone: { source: emitZone }
+    });
+}
+function createObjects(scene) {
+    // 기타 오브젝트 생성
+    object.rock = [];
+    object.rock[0] = scene.add.sprite(0, display.centerH + 52, 'rock').setScale(2);
+    object.rock[1] = scene.add.sprite(display.width, display.centerH + 52, 'rock').setScale(2);
+}
 function setLayer(scene) {
     // TODO 레이어 및 그룹 오브젝트 생성
     mainObject.layer = scene.add.layer();
 
     mainObject.group = scene.add.container();
-    mainObject.group.add([mainObject.player, mainObject.dom]);
+    mainObject.group.add([object.rock[0], object.rock[1], mainObject.player, mainObject.dom]);
 
     ui.group = scene.add.container();
     ui.group.add([ui.background, ui.dialogGroup, ui.largeText, ui.title, ui.skip]);
 
     // 레이어 정렬
     mainObject.layer.add(mainObject.group);
+    mainObject.layer.add(mainObject.particles);
     mainObject.layer.add(ui.group);
 }
 function setAnimations(scene) {
@@ -287,7 +317,6 @@ function moveToPoint(character, x, y){
         moveCharacter(mainObject.player);
     }
     else if(character === mainObject.dom){
-        mainConfig.domFollow = false;
         mainConfig.domCount = 1;
         mainConfig.domPath = maps.navMesh.findPath(mainObject.dom, { x: x, y: y });
         if(mainConfig.domPath === null || mainConfig.domPath.length < 1) return;
@@ -446,7 +475,21 @@ function eventByIndex(){
         }
         if(index === 12){
             setTimeout(() => mainConfig.playerMovable = true, 20);
-            moveToPoint(mainObject.dom, 10, 10);
+            moveToPoint(mainObject.dom, display.centerW, display.height - 200);
+            mainConfig.moveFinishedEvent = function () {
+                let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
+                    col.active = false;
+                    setVisibleObjects(true, [ui.skip, ui.dialogGroup]);
+                    mainConfig.playerMovable = false;
+                    mainConfig.lookAt = mainObject.dom;
+                    moveToPoint(mainObject.player, mainObject.dom.x - 60, mainObject.dom.y);
+                    dialog();
+                }, null, this);
+            }
+        }
+        if(index === 19){
+            setTimeout(() => mainConfig.playerMovable = true, 20);
+            setTimeout(() => mainConfig.domFollow = true, 20);
         }
     }
 }
@@ -454,6 +497,17 @@ function setVisibleObjects(bool, arr) {
     // 배열 오브젝트 모두 setVisible 실행
     for (let i = 0; i < arr.length; i++) {
         arr[i].setVisible(bool);
+    }
+}
+function moveFinished(character) {
+    // 이동 완료 후 바라보기
+    if(mainConfig.lookAt !== null) {
+        character.setFlipX(character.x - mainConfig.lookAt.x > 0);
+        mainConfig.lookAt = null;
+    }
+    if(mainConfig.moveFinishedEvent !== null) {
+        mainConfig.moveFinishedEvent();
+        mainConfig.moveFinishedEvent = null;
     }
 }
 /******/ })()
