@@ -41,7 +41,10 @@ const mainObject = {
     dom : 'dom'
 };
 const object = {};
+// TODO 설정
 const mainConfig = {
+    debugMode : false,
+
     playerTarget : {x: 0, y: 0},
     playerCount : 0,
     playerPath : [],
@@ -53,7 +56,10 @@ const mainConfig = {
     domTarget : {x: 0, y: 0},
     domCount : 0,
     domPath : [],
-    domFollow: false
+    domFollow: false,
+
+    // ui 설정
+    titleFadeOut : null
 }
 const timer = {};
 const event = {};
@@ -75,15 +81,20 @@ function preload() {
     this.load.tilemapTiledJSON("map", "map/newmap.json");
     this.load.image("tileset", "map/set.png");
     // sprites
+    this.load.image("title", "image/title.png");
     this.load.spritesheet('player', 'image/player.png', { frameWidth: 32, frameHeight: 32, endFrame: 7 });
     this.load.spritesheet('dom', 'image/dom.png', { frameWidth: 32, frameHeight: 32, endFrame: 7 });
+    this.load.spritesheet('engineer', 'image/engineer.png', { frameWidth: 32, frameHeight: 32, endFrame: 7 });
     this.load.image("rock", "image/rock.png");
     // UI
     this.load.image('nineslice', 'image/nineslice.png');
+    this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
+
     // plugins
     this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
     // particle
     this.load.image('particle', 'image/particle.png');
+    this.load.atlas("leaf", "image/leaf.png", 'image/leaf.json');
 }
 function create() {
     setLines(this);
@@ -96,10 +107,11 @@ function create() {
     buildMap(this);
     setLayer(this);
     this.input.on('pointerup', pointer => {
+        if(!mainConfig.playerMovable) return;
         mainConfig.playerCount = 1;
         mainConfig.playerPath = maps.navMesh.findPath(mainObject.player, { x: pointer.x, y: pointer.y });
         if(mainConfig.playerPath === null || mainConfig.playerPath.length < 1) return;
-        if(mainConfig.playerMovable) moveCharacter(mainObject.player);
+        moveCharacter(mainObject.player);
         //path_log();
     });
 }
@@ -109,7 +121,6 @@ function update() {
         dom: Phaser.Math.Distance.Between(mainObject.dom.x, mainObject.dom.y, mainConfig.domTarget.x, mainConfig.domTarget.y),
         each: Phaser.Math.Distance.Between(mainObject.player.x, mainObject.player.y, mainObject.dom.x, mainObject.dom.y),
     }
-    
     if (mainObject.player.body.speed > 0){
         if (dis.player < 4){
             // 목적지 도착시 플레이어 정지
@@ -126,7 +137,7 @@ function update() {
         }
         // 플레이어와 멀때 따라가기 경로
         if(dis.each > 80 && mainConfig.domFollow){
-            moveToPoint(mainObject.dom, mainObject.player.x, mainObject.player.y);
+            moveToPoint(mainObject.dom, mainObject.player.x, mainObject.player.y, true);
         }
     }
     if (mainObject.dom.body.speed > 0){
@@ -153,7 +164,6 @@ function update() {
     mainObject.group.list.sort(function(a, b) {
         return a.y > b.y ? 1 : -1;
     });
-
 }
 
 // TODO 오브젝트 생성
@@ -175,6 +185,8 @@ function createCharacters(scene) {
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('player-stand');
     mainObject.dom = scene.physics.add.sprite(display.centerW - 60, 180, 'dom')
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('dom-stand').setVisible(false);
+    mainObject.engineer = scene.physics.add.sprite(display.centerW, display.centerH + 80, 'engineer')
+        .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('en-stand').setVisible(false);
 }
 function createGraphics(scene) {
     // TODO 그래픽 생성
@@ -188,11 +200,16 @@ function createUIObjects(scene) {
     ui.cam = scene.cameras.main;
     ui.skip = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0)
         .setInteractive();
+    ui.white = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0xffffff);
     ui.background = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
-    ui.title = scene.add.text(display.centerW, display.centerH, 'SHADOW OF MYZY', fontConfig)
-        .setAlign('center').setOrigin(0.5);
+    ui.title = scene.add.sprite(display.centerW, 180, 'title').setOrigin(0.5).setScale(2);
     ui.largeText = scene.add.text(display.centerW, display.centerH, '', fontConfig)
         .setAlign('center').setOrigin(0.5).setVisible(false);
+    ui.mark = scene.add.sprite(display.centerW - 60, 180, 'mark').play('mark')
+        .setOrigin(0.5, 1).setScale(2).setVisible(false);
+
+    ui.next = scene.add.rectangle(display.centerW, display.height - 30, display.width, 60, 0x00ff00).setVisible(false);
+    scene.physics.add.existing(ui.next);
 
     ui.dialogGroup = scene.add.container();
     ui.dialogBox = scene.add.rexNinePatch({
@@ -210,6 +227,7 @@ function createUIObjects(scene) {
     });
 }
 function createParticles(scene) {
+    // 파티클 생성
     let emitZone = new Phaser.Geom.Rectangle(-200, -600, 200, 1200);
     mainObject.particles = scene.add.particles('particle');
     let emitter = mainObject.particles.createEmitter({
@@ -217,11 +235,28 @@ function createParticles(scene) {
         y: 0,
         speed: 80,
         gravityX: 120,
-        gravityY: 100,
+        gravityY: 120,
         lifespan: 6000,
         quantity: 0.5,
         scale: 2,
         emitZone: { source: emitZone }
+    });
+
+    let titlezone = new Phaser.Geom.Rectangle(0, -60, display.width, 10);
+    mainObject.TitleParticle = scene.add.particles('leaf');
+    mainObject.TitleEmitter = mainObject.TitleParticle.createEmitter({
+        frame: [ '0', '1', '2', '3'],
+        x: 0,
+        y: 0,
+        speed: 60,
+        gravityX: 0,
+        gravityY: 60,
+        lifespan: 6000,
+        quantity: 1,
+        frequency: 400,
+        scale: 2,
+        rotate: { start: 0, end: 360, ease: 'Back.easeOut' },
+        emitZone: { source: titlezone }
     });
 }
 function createObjects(scene) {
@@ -235,15 +270,16 @@ function setLayer(scene) {
     mainObject.layer = scene.add.layer();
 
     mainObject.group = scene.add.container();
-    mainObject.group.add([object.rock[0], object.rock[1], mainObject.player, mainObject.dom]);
+    mainObject.group.add([object.rock[0], object.rock[1], mainObject.player, mainObject.dom, mainObject.engineer]);
 
     ui.group = scene.add.container();
-    ui.group.add([ui.background, ui.dialogGroup, ui.largeText, ui.title, ui.skip]);
+    ui.group.add([ui.background, ui.mark, ui.next, ui.dialogGroup, ui.largeText, ui.white, ui.title, ui.skip]);
 
     // 레이어 정렬
     mainObject.layer.add(mainObject.group);
     mainObject.layer.add(mainObject.particles);
     mainObject.layer.add(ui.group);
+    mainObject.layer.add(mainObject.TitleParticle);
 }
 function setAnimations(scene) {
     // TODO 애니메이션 추가
@@ -268,7 +304,18 @@ function setAnimations(scene) {
 
     scene.anims.create({
         key: 'dom-stand',
-        frames: scene.anims.generateFrameNumbers('dom', { start: 0, end: 3, first: 0 }),
+        frames: scene.anims.generateFrameNumbers('dom', { start: 0, end: 1, first: 0 }),
+        frameRate: 2,
+        repeat: -1
+    });
+    scene.anims.create({
+        key: 'dom-blink',
+        frames: scene.anims.generateFrameNumbers('dom', { start: 2, end: 3, first: 2 }),
+        frameRate: 8
+    });
+    scene.anims.create({
+        key: 'dom-talk',
+        frames: scene.anims.generateFrameNumbers('dom', { start: 4, end: 5, first: 4 }),
         frameRate: 4,
         repeat: -1
     });
@@ -276,6 +323,26 @@ function setAnimations(scene) {
         key: 'dom-run',
         frames: scene.anims.generateFrameNumbers('dom', { start: 6, end: 7, first: 0 }),
         frameRate: 8,
+        repeat: -1
+    });
+    scene.anims.create({
+        key: 'en-stand',
+        frames: scene.anims.generateFrameNumbers('engineer', { start: 0, end: 1, first: 0 }),
+        frameRate: 2,
+        repeat: -1
+    });
+    scene.anims.create({
+        key: 'en-talk',
+        frames: scene.anims.generateFrameNumbers('engineer', { start: 2, end: 3, first: 2 }),
+        frameRate: 2,
+        repeat: -1
+    });
+
+
+    scene.anims.create({
+        key: 'mark',
+        frames: scene.anims.generateFrameNumbers('mark', { start: 0, end: 1, first: 0 }),
+        frameRate: 2,
         repeat: -1
     });
 }
@@ -288,6 +355,7 @@ function setLines(scene) {
     line.story = jsonText.story;
     console.log(line);
 }
+
 // TODO 동작 메서드
 function Move(character, target, speed) {
     game.scene.scenes[0].physics.moveToObject(character, target, speed);
@@ -308,17 +376,17 @@ function moveCharacter(character) {
         Move(mainObject.dom, mainConfig.domTarget, 160);
     }
 }
-function moveToPoint(character, x, y){
+function moveToPoint(character, x, y, withPath){
     if(character === mainObject.player){
         mainConfig.playerMovable = false;
         mainConfig.playerCount = 1;
-        mainConfig.playerPath = maps.navMesh.findPath(mainObject.player, { x: x, y: y });
+        mainConfig.playerPath = (withPath) ? maps.navMesh.findPath(mainObject.player, { x: x, y: y }) : [{ x: mainObject.player.x, y: mainObject.player.y }, { x: x, y: y }];
         if(mainConfig.playerPath === null || mainConfig.playerPath.length < 1) return;
         moveCharacter(mainObject.player);
     }
     else if(character === mainObject.dom){
         mainConfig.domCount = 1;
-        mainConfig.domPath = maps.navMesh.findPath(mainObject.dom, { x: x, y: y });
+        mainConfig.domPath = (withPath) ? maps.navMesh.findPath(mainObject.dom, { x: x, y: y }) : [{ x: mainObject.dom.x, y: mainObject.dom.y }, { x: x, y: y }];
         if(mainConfig.domPath === null || mainConfig.domPath.length < 1) return;
         moveCharacter(mainObject.dom);
     }
@@ -392,43 +460,45 @@ function typewriteText(object, txt, speed) {
         })
     }
 }
+
 // TODO 이벤트 메서드
 function skip() {
     if(status.scene === 'title'){
+        if(mainConfig.debugMode){
+            ui.title.setVisible(false);
+            ui.white.setVisible(false);
+            chapterTitle(mainConfig.debugMode);
+            return;
+        }
         status.scene = 'opening';
-        ui.title.setVisible(false);
-        ui.largeText.setVisible(true);
-        ui.largeText.text = line.opening[status.index];
-        shakeObject(ui.largeText, 20, 20, 240);
-        status.index++;
+        mainObject.TitleEmitter.setGravityX(2000);
+        mainObject.TitleEmitter.stop();
+        game.scene.scenes[0].tweens.add({
+            targets: ui.title,
+            y: -120,
+            duration: 800,
+            ease: Phaser.Math.Easing.Quintic.In,
+            onComplete: function () {
+            }
+        });
+        game.scene.scenes[0].tweens.add({
+            targets: ui.white,
+            y: -display.height,
+            duration: 1200,
+            ease: Phaser.Math.Easing.Quintic.In,
+            onComplete: function () {
+                ui.largeText.setVisible(true);
+                ui.largeText.text = line.opening[status.index];
+                shakeObject(ui.largeText, 20, 20, 240);
+                status.index++;
+            }
+        });
     }
     else if(status.scene === 'opening'){
+        // 마지막 줄에서 챕터 씬으로 전환
         if(line.opening[status.index] === undefined) {
-            status.scene = 'chapter';
-            status.index = 0;
-            status.chapterIdx = 0;
-
-            ui.background.setVisible(false);
-            ui.largeText.setVisible(false);
-
-            //zoomOut();
-            ui.dialogGroup.setVisible(true);
-            dialog();
-            ui.skip.setInteractive();
-
-            function zoomOut() {
-                ui.skip.disableInteractive();
-                ui.cam.zoom = 4;
-                ui.cam.pan(mainObject.player.x, mainObject.player.y - 32, 1);
-                setTimeout(() => ui.cam.pan(display.centerW, display.centerH, 2800, Phaser.Math.Easing.Quintic.InOut, true), 200);
-                ui.cam.zoomTo(1, 3000, Phaser.Math.Easing.Quintic.InOut);
-                ui.cam.on(Phaser.Cameras.Scene2D.Events.ZOOM_COMPLETE, () => {
-                    ui.dialogGroup.setVisible(true);
-                    dialog();
-                    ui.skip.setInteractive();
-                });
-
-            }
+            if(mainConfig.titleFadeOut !== null) return;
+            chapterTitle(mainConfig.debugMode);
         }
         else {
             ui.largeText.text = line.opening[status.index];
@@ -442,6 +512,7 @@ function skip() {
 }
 function dialog() {
     if(line.story[status.chapterIdx][status.index] === '*close*'){
+        mainObject.dom.play('dom-stand');
         event.typing = false;
         ui.dialogGroup.setVisible(false);
         ui.skip.setVisible(false);
@@ -449,6 +520,10 @@ function dialog() {
         status.index++;
     }
     else {
+        if(!ui.dialogGroup.visible) {
+            ui.skip.setVisible(true);
+            ui.dialogGroup.setVisible(true);
+        }
         typewriteText(ui.dialog, line.story[status.chapterIdx][status.index], 60);
     }
 }
@@ -463,14 +538,16 @@ function eventByIndex(){
         }
         if(index === 6){
             mainObject.player.play('player-stand');
-            setTimeout(() => mainConfig.playerMovable = true, 20);
+            setTimeout(() => ui.mark.setVisible(true), 200);
+            setTimeout(() => mainConfig.playerMovable = true, 0);
             let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
-                console.log('found');
                 col.active = false;
+                ui.mark.setVisible(false);
                 setVisibleObjects(true, [mainObject.dom, ui.skip, ui.dialogGroup]);
-                moveToPoint(mainObject.player, mainObject.dom.x + 60, mainObject.dom.y);
+                moveToPoint(mainObject.player, mainObject.dom.x + 60, mainObject.dom.y, true);
                 mainConfig.lookAt = mainObject.dom;
                 dialog();
+                mainObject.dom.play('dom-talk');
             }, null, this);
         }
         if(index === 12){
@@ -481,15 +558,32 @@ function eventByIndex(){
                     col.active = false;
                     setVisibleObjects(true, [ui.skip, ui.dialogGroup]);
                     mainConfig.playerMovable = false;
-                    mainConfig.lookAt = mainObject.dom;
-                    moveToPoint(mainObject.player, mainObject.dom.x - 60, mainObject.dom.y);
+                    mainConfig.lookAt = true;
+                    moveToPoint(mainObject.player, mainObject.dom.x - 60, mainObject.dom.y, true);
                     dialog();
+                    mainObject.dom.play('dom-talk');
                 }, null, this);
             }
         }
         if(index === 19){
-            setTimeout(() => mainConfig.playerMovable = true, 20);
-            setTimeout(() => mainConfig.domFollow = true, 20);
+            // 다음 스테이지로
+            setTimeout(() => mainConfig.playerMovable = true, 0);
+            setTimeout(() => mainConfig.domFollow = true, 0);
+            let col = scene.physics.add.overlap(mainObject.player, ui.next, function () {
+                console.log('to next stage');
+                status.chapterIdx++;
+                col.active = false;
+                mainConfig.domFollow = false;
+                ui.background.setVisible(true).setAlpha(0);
+                moveToPoint(mainObject.player, display.centerW, display.height + 180, false);
+                moveToPoint(mainObject.dom, display.centerW, display.height + 180, false);
+                scene.tweens.add({
+                    targets: ui.background,
+                    alpha: 1,
+                    duration: 2000,
+                    onComplete: () => chapterTitle(mainConfig.debugMode)
+                });
+            }, null, this);
         }
     }
 }
@@ -501,13 +595,85 @@ function setVisibleObjects(bool, arr) {
 }
 function moveFinished(character) {
     // 이동 완료 후 바라보기
-    if(mainConfig.lookAt !== null) {
-        character.setFlipX(character.x - mainConfig.lookAt.x > 0);
-        mainConfig.lookAt = null;
+    if(mainConfig.lookAt) {
+        mainObject.player.setFlipX(mainObject.player.x - mainObject.dom.x > 0);
+        mainObject.dom.setFlipX(mainObject.dom.x - mainObject.player.x > 0);
+        mainConfig.lookAt = false;
     }
     if(mainConfig.moveFinishedEvent !== null) {
         mainConfig.moveFinishedEvent();
         mainConfig.moveFinishedEvent = null;
+    }
+}
+
+// TODO 씬 제어
+function chapterTitle(skip) {
+    if(skip) {
+        chapterStart(status.chapterIdx);
+        return;
+    }
+    let scene = game.scene.scenes[0];
+    ui.largeText.setAlpha(0);
+    ui.largeText.setVisible(true);
+    ui.largeText.text = line.chapter[status.chapterIdx];
+    mainConfig.titleFadeOut = scene.tweens.add({
+        targets: ui.largeText,
+        alpha: 1,
+        duration: 2400,
+        yoyo: true,
+        ease: Phaser.Math.Easing.Elastic.InOut,
+        onComplete: () => chapterStart(status.chapterIdx)
+    });
+
+    function chapterStart(chapterIdx) {
+        mainConfig.titleFadeOut = null;
+        status.scene = 'chapter';
+        status.index = 0;
+        console.log(status.scene, status.chapterIdx);
+        game.scene.scenes[0].tweens.add({
+            targets: ui.background,
+            alpha: 0,
+            duration: 1200,
+            onComplete: () => ui.background.setVisible(false)
+        });
+        ui.largeText.setVisible(false);
+        if(chapterIdx === 0){
+            zoomOut(mainConfig.debugMode);
+            function zoomOut(on) {
+                if(on){
+                    ui.dialogGroup.setVisible(true);
+                    dialog();
+                    ui.skip.setInteractive();
+                }
+                else {
+                    ui.skip.disableInteractive();
+                    ui.cam.zoom = 4;
+                    ui.cam.pan(mainObject.player.x, mainObject.player.y - 32, 1);
+                    setTimeout(function () {
+                        ui.cam.pan(display.centerW, display.centerH, 2800, Phaser.Math.Easing.Quintic.InOut, true);
+                        ui.cam.zoomTo(1, 2800, Phaser.Math.Easing.Quintic.InOut);
+                        ui.cam.on(Phaser.Cameras.Scene2D.Events.ZOOM_COMPLETE, () => {
+                            ui.dialogGroup.setVisible(true);
+                            dialog();
+                            ui.skip.setInteractive();
+                        });
+                    }, 400);
+                }
+            }
+        }
+        else if(chapterIdx === 1){
+            mainObject.particles.setVisible(false);
+            mainObject.engineer.setVisible(true);
+            mainObject.player.x = mainObject.dom.x = display.centerW;
+            mainObject.player.y = mainObject.dom.y = -80;
+            mainConfig.lookAt = true;
+            moveToPoint(mainObject.player, display.centerW + 20, 100, false);
+            moveToPoint(mainObject.dom, display.centerW - 20, 100, false);
+            mainConfig.moveFinishedEvent = function () {
+                dialog();
+                console.log('chapter new')
+            }
+        }
     }
 }
 /******/ })()
