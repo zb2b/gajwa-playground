@@ -38,7 +38,7 @@ const mainObject = {
 const object = {};
 // TODO 설정
 const mainConfig = {
-    debugMode : false,
+    debugMode : true,
 
     playerTarget : {x: 0, y: 0},
     playerCount : 0,
@@ -65,7 +65,8 @@ const debug = {};
 const status = {
     scene: 'title',
     index: 0,
-    chapterIdx: 0
+    chapterIdx: 0,
+    taskIdx: 0
 };
 
 function preload() {
@@ -77,14 +78,14 @@ function preload() {
     this.load.image("tileset", "map/set.png");
     // sprites
     this.load.image("title", "image/title.png");
-    this.load.spritesheet('player', 'image/player.png', { frameWidth: 32, frameHeight: 32, endFrame: 7 });
-    this.load.spritesheet('dom', 'image/dom.png', { frameWidth: 32, frameHeight: 32, endFrame: 7 });
-    this.load.spritesheet('engineer', 'image/engineer.png', { frameWidth: 32, frameHeight: 32, endFrame: 7 });
     this.load.image("rock", "image/rock.png");
+    this.load.image("pc", "image/building.png");
+    this.load.aseprite('character', 'image/character.png', 'image/character.json');
+    this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
     // UI
     this.load.image('nineslice', 'image/nineslice.png');
+    this.load.image('nineslice-task', 'image/nineslice-task.png');
     this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
-
     // plugins
     this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
     // particle
@@ -169,19 +170,36 @@ function buildMap(scene) {
     maps.tilemap = scene.add.tilemap("map");
     maps.tileset = maps.tilemap.addTilesetImage("tileset", "tileset");
     maps.tilemap.createLayer("bg", maps.tileset);
-    maps.wallLayer = maps.tilemap.createLayer("walls", maps.tileset).setVisible(false);
-    maps.objectLayer = maps.tilemap.getObjectLayer("navmesh");
-    maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer, 12.5);
+    maps.wallLayer = [];
+    maps.wallLayer[0] = maps.tilemap.createLayer("display0", maps.tileset).setVisible(true);
+    maps.wallLayer[1] = maps.tilemap.createLayer("display1", maps.tileset).setVisible(false);
+
+    maps.objectLayer = [];
+    maps.objectLayer[0] = maps.tilemap.getObjectLayer("0");
+    maps.objectLayer[1] = maps.tilemap.getObjectLayer("1");
+
+    maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[0], 12.5);
 }
 function createCharacters(scene) {
     // 메인 캐릭터 생성 <br>
     // 플레이어 오브젝트 : mainObject.player
-    mainObject.player = scene.physics.add.sprite(display.centerW, 180, 'player')
+    mainConfig.anims = scene.anims.createFromAseprite('character');
+    let chracterData = scene.cache.json.get('character').meta.frameTags;
+    for (let i = 0; i < chracterData.length; i++) {
+        if(chracterData[i].repeat === undefined) mainConfig.anims[i].repeat = -1;
+        else mainConfig.anims[i].repeat = chracterData[i].repeat;
+        if(chracterData[i].frameRate === undefined) mainConfig.anims[i].frameRate = 2;
+        else mainConfig.anims[i].frameRate = chracterData[i].frameRate;
+    }
+
+    mainObject.player = scene.physics.add.sprite(display.centerW, 180)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('player-stand');
-    mainObject.dom = scene.physics.add.sprite(display.centerW - 60, 180, 'dom')
+    mainObject.dom = scene.physics.add.sprite(display.centerW - 60, 180)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('dom-stand').setVisible(false);
-    mainObject.engineer = scene.physics.add.sprite(display.centerW, display.centerH + 80, 'engineer')
+    mainObject.engineer = scene.physics.add.sprite(display.centerW, display.centerH + 80)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('en-stand').setVisible(false);
+    mainObject.man = scene.physics.add.sprite(display.centerW + 80, 180).play('man-stand')
+        .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).setVisible(false);
 }
 function createGraphics(scene) {
     // TODO 그래픽 생성
@@ -216,9 +234,43 @@ function createUIObjects(scene) {
     }).setOrigin(0.5, 1).setScale(2);
     ui.dialog = scene.add.text(30, display.height - 160, '', fontConfig).setFontSize(16).setLineSpacing(4);
     ui.dialogGroup.add([ui.dialogBox, ui.dialog]).setVisible(false);
-    
+
+    ui.taskGroup = scene.add.container();
+    ui.task = scene.add.text(42, 34, '', fontConfig).setFontSize(16).setLineSpacing(4);
+    ui.taskBox = scene.add.rexNinePatch({
+        x: display.centerW, y: 64,
+        width: (display.width - 20) * 0.5, height: 32,
+        key: 'nineslice-task',
+        columns: [15, undefined, 15],
+        rows: [0, undefined, 0],
+    }).setOrigin(0.5, 1).setScale(2);
+    ui.taskGroup.add([ui.taskBox, ui.task]);
+    ui.taskGroup.y = -64;
+
     ui.skip.on('pointerup', function () {
         skip();
+    });
+}
+function setTask(visible) {
+    let scene = game.scene.scenes[0];
+    let pos = 0;
+    let ease = null;
+    if (visible){
+        pos = 0;
+        ease = Phaser.Math.Easing.Quintic.Out;
+        ui.task.text = line.task[status.chapterIdx][status.taskIdx];
+        status.taskIdx++;
+    }
+    else {
+        ease = Phaser.Math.Easing.Quintic.In;
+        pos = -64;
+    }
+
+    scene.tweens.add({
+        targets: ui.taskGroup,
+        y: pos,
+        duration: 1200,
+        ease: ease
     });
 }
 function createParticles(scene) {
@@ -256,19 +308,22 @@ function createParticles(scene) {
 }
 function createObjects(scene) {
     // 기타 오브젝트 생성
-    object.rock = [];
-    object.rock[0] = scene.add.sprite(0, display.centerH + 52, 'rock').setScale(2);
-    object.rock[1] = scene.add.sprite(display.width, display.centerH + 52, 'rock').setScale(2);
+    object.list = [];
+    object.list[0] = scene.add.sprite(0, 336, 'obj', 'rock').setScale(2).setOrigin(0, 1);
+    object.list[1] = scene.add.sprite(display.width - 80, 368, 'obj', 'rock').setScale(2).setOrigin(0, 1);
+    object.list[2] = scene.add.sprite(96, 368, 'obj', 'pc').setScale(2).setOrigin(0, 1).setVisible(false);
+
 }
 function setLayer(scene) {
     // TODO 레이어 및 그룹 오브젝트 생성
     mainObject.layer = scene.add.layer();
 
     mainObject.group = scene.add.container();
-    mainObject.group.add([object.rock[0], object.rock[1], mainObject.player, mainObject.dom, mainObject.engineer]);
+    mainObject.group.add([mainObject.player, mainObject.dom, mainObject.engineer, mainObject.man]);
+    mainObject.group.add(object.list);
 
     ui.group = scene.add.container();
-    ui.group.add([ui.background, ui.mark, ui.next, ui.dialogGroup, ui.largeText, ui.white, ui.title, ui.skip]);
+    ui.group.add([ui.background, ui.mark, ui.next, ui.dialogGroup, ui.taskGroup, ui.largeText, ui.white, ui.title, ui.skip]);
 
     // 레이어 정렬
     mainObject.layer.add(mainObject.group);
@@ -278,62 +333,6 @@ function setLayer(scene) {
 }
 function setAnimations(scene) {
     // TODO 애니메이션 추가
-    scene.anims.create({
-        key: 'player-stand',
-        frames: scene.anims.generateFrameNumbers('player', { start: 0, end: 1, first: 0 }),
-        frameRate: 2,
-        repeat: -1
-    });
-    scene.anims.create({
-        key: 'player-seek',
-        frames: scene.anims.generateFrameNumbers('player', { start: 2, end: 3, first: 0 }),
-        frameRate: 2,
-        repeat: -1
-    });
-    scene.anims.create({
-        key: 'player-run',
-        frames: scene.anims.generateFrameNumbers('player', { start: 4, end: 7, first: 0 }),
-        frameRate: 8,
-        repeat: -1
-    });
-
-    scene.anims.create({
-        key: 'dom-stand',
-        frames: scene.anims.generateFrameNumbers('dom', { start: 0, end: 1, first: 0 }),
-        frameRate: 2,
-        repeat: -1
-    });
-    scene.anims.create({
-        key: 'dom-blink',
-        frames: scene.anims.generateFrameNumbers('dom', { start: 2, end: 3, first: 2 }),
-        frameRate: 8
-    });
-    scene.anims.create({
-        key: 'dom-talk',
-        frames: scene.anims.generateFrameNumbers('dom', { start: 4, end: 5, first: 4 }),
-        frameRate: 4,
-        repeat: -1
-    });
-    scene.anims.create({
-        key: 'dom-run',
-        frames: scene.anims.generateFrameNumbers('dom', { start: 6, end: 7, first: 0 }),
-        frameRate: 8,
-        repeat: -1
-    });
-    scene.anims.create({
-        key: 'en-stand',
-        frames: scene.anims.generateFrameNumbers('engineer', { start: 0, end: 1, first: 0 }),
-        frameRate: 2,
-        repeat: -1
-    });
-    scene.anims.create({
-        key: 'en-talk',
-        frames: scene.anims.generateFrameNumbers('engineer', { start: 2, end: 3, first: 2 }),
-        frameRate: 2,
-        repeat: -1
-    });
-
-
     scene.anims.create({
         key: 'mark',
         frames: scene.anims.generateFrameNumbers('mark', { start: 0, end: 1, first: 0 }),
@@ -425,6 +424,7 @@ function shakeObject(obj, max, speed, time) {
 }
 function typewriteText(object, txt, speed) {
     eventByIndex();
+    if(txt === undefined) return;
     game.scene.scenes[0].time.removeEvent(event.type);
     const length = txt.length
     // 타이핑 도중에 재실행
@@ -460,6 +460,8 @@ function typewriteText(object, txt, speed) {
 function skip() {
     if(status.scene === 'title'){
         if(mainConfig.debugMode){
+            mainObject.TitleEmitter.stop();
+            mainObject.TitleEmitter.setVisible(false);
             ui.title.setVisible(false);
             ui.white.setVisible(false);
             chapterTitle(mainConfig.debugMode);
@@ -532,28 +534,39 @@ function eventByIndex(){
             mainObject.player.play('player-seek');
         }
         if(index === 6){
+            setTask(true);
             mainObject.player.play('player-stand');
-            setTimeout(() => ui.mark.setVisible(true), 200);
+            let markOn = setTimeout(function () {
+                if(mainObject.dom.visible) {
+                    clearTimeout(markOn);
+                    markOn = undefined;
+                    return;
+                }
+                ui.mark.setVisible(true);
+            }, 3200);
             setTimeout(() => mainConfig.playerMovable = true, 0);
             let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
                 col.active = false;
                 ui.mark.setVisible(false);
                 setVisibleObjects(true, [mainObject.dom, ui.skip, ui.dialogGroup]);
                 moveToPoint(mainObject.player, mainObject.dom.x + 60, mainObject.dom.y, true);
-                mainConfig.lookAt = mainObject.dom;
+                mainConfig.lookAt = [mainObject.player, mainObject.dom];
                 dialog();
                 mainObject.dom.play('dom-talk');
+                setTask(false);
             }, null, this);
         }
         if(index === 12){
+            setTask(true);
             setTimeout(() => mainConfig.playerMovable = true, 20);
-            moveToPoint(mainObject.dom, display.centerW, display.height - 200);
+            moveToPoint(mainObject.dom, display.centerW, display.centerH + 80);
             mainConfig.moveFinishedEvent = function () {
                 let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
                     col.active = false;
+                    setTask(false);
                     setVisibleObjects(true, [ui.skip, ui.dialogGroup]);
                     mainConfig.playerMovable = false;
-                    mainConfig.lookAt = true;
+                    mainConfig.lookAt = [mainObject.player, mainObject.dom];
                     moveToPoint(mainObject.player, mainObject.dom.x - 60, mainObject.dom.y, true);
                     dialog();
                     mainObject.dom.play('dom-talk');
@@ -562,9 +575,11 @@ function eventByIndex(){
         }
         if(index === 19){
             // 다음 스테이지로
+            setTask(true);
             setTimeout(() => mainConfig.playerMovable = true, 0);
             setTimeout(() => mainConfig.domFollow = true, 0);
             let col = scene.physics.add.overlap(mainObject.player, ui.next, function () {
+                setTask(false);
                 console.log('to next stage');
                 status.chapterIdx++;
                 col.active = false;
@@ -581,6 +596,22 @@ function eventByIndex(){
             }, null, this);
         }
     }
+    if(chapter === 1) {
+        if (index === 3) {
+            setTimeout(function () {
+                mainConfig.playerMovable = true;
+                mainConfig.domFollow = true;
+            }, 0);
+            let col = scene.physics.add.overlap(mainObject.player, mainObject.engineer, function () {
+                col.active = false;
+                mainConfig.playerMovable = false;
+                mainConfig.lookAt = [mainObject.player, mainObject.engineer];
+                moveToPoint(mainObject.player, mainObject.engineer.x + 60, mainObject.engineer.y, true);
+                dialog();
+                mainObject.engineer.play('en-talk');
+            }, null, this);
+        }
+    }
 }
 function setVisibleObjects(bool, arr) {
     // 배열 오브젝트 모두 setVisible 실행
@@ -590,10 +621,11 @@ function setVisibleObjects(bool, arr) {
 }
 function moveFinished(character) {
     // 이동 완료 후 바라보기
-    if(mainConfig.lookAt) {
-        mainObject.player.setFlipX(mainObject.player.x - mainObject.dom.x > 0);
-        mainObject.dom.setFlipX(mainObject.dom.x - mainObject.player.x > 0);
-        mainConfig.lookAt = false;
+    if(mainConfig.lookAt !== null) {
+        if(!Array.isArray(mainConfig.lookAt)) return;
+        mainConfig.lookAt[0].setFlipX(mainConfig.lookAt[0].x - mainConfig.lookAt[1].x > 0);
+        mainConfig.lookAt[1].setFlipX(mainConfig.lookAt[1].x - mainConfig.lookAt[0].x > 0);
+        mainConfig.lookAt = null;
     }
     if(mainConfig.moveFinishedEvent !== null) {
         mainConfig.moveFinishedEvent();
@@ -621,6 +653,7 @@ function chapterTitle(skip) {
     });
 
     function chapterStart(chapterIdx) {
+        let scene = game.scene.scenes[0];
         mainConfig.titleFadeOut = null;
         status.scene = 'chapter';
         status.index = 0;
@@ -657,16 +690,22 @@ function chapterTitle(skip) {
             }
         }
         else if(chapterIdx === 1){
+            maps.navMesh.destroy();
+            maps.wallLayer[0].setVisible(false);
+            maps.wallLayer[1].setVisible(true);
+            maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[1], 12.5);
+            setVisibleObjects(false, [object.list[0], object.list[1]]);
+            object.list[2].setVisible(true);
+
             mainObject.particles.setVisible(false);
             mainObject.engineer.setVisible(true);
             mainObject.player.x = mainObject.dom.x = display.centerW;
             mainObject.player.y = mainObject.dom.y = -80;
-            mainConfig.lookAt = true;
-            moveToPoint(mainObject.player, display.centerW + 20, 100, false);
-            moveToPoint(mainObject.dom, display.centerW - 20, 100, false);
+            mainConfig.lookAt = [mainObject.player, mainObject.dom];
+            moveToPoint(mainObject.player, display.centerW + 30, 100, false);
+            moveToPoint(mainObject.dom, display.centerW - 30, 100, false);
             mainConfig.moveFinishedEvent = function () {
                 dialog();
-                console.log('chapter new')
             }
         }
     }

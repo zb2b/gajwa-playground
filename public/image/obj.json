@@ -1,0 +1,33 @@
+{
+"frames":[
+  {
+        "filename": "rock",
+        "frame":  { "x": 0, "y" :0, "w" :40, "h" :60 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :40, "h" :60 },
+        "sourceSize": { "w" :40, "h" :60 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "pc",
+        "frame":  { "x": 48, "y" :0, "w" :64, "h" :91 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :64, "h" :91 },
+        "sourceSize": { "w" :64, "h" :91 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "arrow",
+        "frame":  { "x": 128, "y" :0, "w" :37, "h" :32 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :37, "h" :32 },
+        "sourceSize": { "w" :37, "h" :32 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ]
+}
