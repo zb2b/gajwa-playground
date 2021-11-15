@@ -12,21 +12,31 @@
   ,
   {
         "filename": "pc",
-        "frame":  { "x": 48, "y" :0, "w" :64, "h" :91 },
+        "frame":  { "x": 48, "y" :0, "w" :64, "h" :90 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :64, "h" :91 },
-        "sourceSize": { "w" :64, "h" :91 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :64, "h" :90 },
+        "sourceSize": { "w" :64, "h" :90 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ,
   {
-        "filename": "arrow",
-        "frame":  { "x": 128, "y" :0, "w" :37, "h" :32 },
+        "filename": "title",
+        "frame":  { "x": 0, "y" :96, "w" :144, "h" :112 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :37, "h" :32 },
-        "sourceSize": { "w" :37, "h" :32 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :144, "h" :112 },
+        "sourceSize": { "w" :144, "h" :112 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "particle",
+        "frame":  { "x": 0, "y" :64, "w" :16, "h" :16 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
+        "sourceSize": { "w" :16, "h" :16 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ]

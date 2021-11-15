@@ -45,8 +45,8 @@ const mainConfig = {
     playerPath : [],
     playerMovable : false,
     // 이동 후 바라볼 오브젝트
-    lookAt: null,
-    moveFinishedEvent: null,
+    lookAt: {player: null, dom: null, engineer: null},
+    moveFinishedEvent: {player: null, dom: null, engineer: null},
 
     domTarget : {x: 0, y: 0},
     domCount : 0,
@@ -54,7 +54,11 @@ const mainConfig = {
     domFollow: false,
 
     // ui 설정
-    titleFadeOut : null
+    titleFadeOut : null,
+
+    // game 설정
+    pcTimerPushed : false,
+    pcTimer : 0
 }
 const timer = {};
 const event = {};
@@ -77,15 +81,15 @@ function preload() {
     this.load.tilemapTiledJSON("map", "map/newmap.json");
     this.load.image("tileset", "map/set.png");
     // sprites
-    this.load.image("title", "image/title.png");
-    this.load.image("rock", "image/rock.png");
-    this.load.image("pc", "image/building.png");
     this.load.aseprite('character', 'image/character.png', 'image/character.json');
     this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
     // UI
     this.load.image('nineslice', 'image/nineslice.png');
     this.load.image('nineslice-task', 'image/nineslice-task.png');
     this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
+    this.load.image("pc", "image/pc.png");
+    this.load.spritesheet('pc-err', 'image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
+    this.load.atlas('keyboard', 'image/keyboard.png', 'image/keyboard.json');
     // plugins
     this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
     // particle
@@ -154,12 +158,19 @@ function update() {
         else if(dis.each < 40 && mainConfig.domFollow){
             mainObject.dom.body.reset(mainObject.dom.x, mainObject.dom.y);
             if(mainObject.dom.anims.currentAnim.key !== 'dom-stand') mainObject.dom.play('dom-stand');
+
         }
     }
     // 레이어 순서 정렬
     mainObject.group.list.sort(function(a, b) {
         return a.y > b.y ? 1 : -1;
     });
+    if(mainConfig.pcTimerPushed) mainConfig.pcTimer++;
+    if(mainConfig.pcTimer > 140) {
+        mainConfig.pcTimerPushed = false;
+        mainConfig.pcTimer = 0;
+        pcShutDown();
+    }
 }
 
 // TODO 오브젝트 생성
@@ -215,7 +226,7 @@ function createUIObjects(scene) {
         .setInteractive();
     ui.white = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0xffffff);
     ui.background = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
-    ui.title = scene.add.sprite(display.centerW, 180, 'title').setOrigin(0.5).setScale(2);
+    ui.title = scene.add.sprite(display.centerW, 180, 'obj', 'title').setOrigin(0.5).setScale(2);
     ui.largeText = scene.add.text(display.centerW, display.centerH, '', fontConfig)
         .setAlign('center').setOrigin(0.5).setVisible(false);
     ui.mark = scene.add.sprite(display.centerW - 60, 180, 'mark').play('mark')
@@ -223,6 +234,73 @@ function createUIObjects(scene) {
 
     ui.next = scene.add.rectangle(display.centerW, display.height - 30, display.width, 60, 0x00ff00).setVisible(false);
     scene.physics.add.existing(ui.next);
+
+    ui.gameGroup = scene.add.container();
+    ui.gameBackground = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
+    ui.pc = scene.add.sprite(display.centerW, display.centerH, 'pc').setOrigin(0.5).setScale(2);
+    ui.pcOff = scene.add.rectangle(display.centerW, display.centerH - 137, 188, 158, 0xffffff).setVisible(false);
+    ui.pcErr = scene.add.sprite(display.centerW, display.centerH - 136).play('pc-err').setOrigin(0.5).setScale(2);
+    ui.pcDown = scene.add.sprite(display.centerW, display.centerH - 136, 'keyboard', 'down').setOrigin(0.5).setScale(2).setVisible(false);
+    ui.pcPw = scene.add.container();
+    ui.pcPwList = [];
+    ui.pcInfo = '';
+    for (let i = 0; i < 4; i++) {
+        ui.pcPwList[i] = scene.add.text(92.5 + i * 36, 168, '*', fontConfig).setFontSize(48).setVisible(false);
+    }
+    ui.pcPw.add(ui.pcPwList);
+    ui.keyboard = scene.add.container();
+    function setKeyboard() {
+        let keys = [];
+        let pos = {x: 0, y: 0};
+        for (let i = 0; i < 14; i++) {
+            let index = null;
+            if(i === 10){
+                index = 'enter-';
+                pos.x = 238;
+                pos.y = 514;
+            }
+            else if(i === 11){
+                index = 'esc-';
+                pos.x = 38;
+                pos.y = 482;
+            }
+            else if(i === 12){
+                index = 'danger-';
+                pos.x = 38;
+                pos.y = 540;
+            }
+            else if(i === 13){
+                index = 'power-';
+                pos.x = 254;
+                pos.y = 340;
+            }
+            else{
+                index = i;
+                pos.x = 38 + (i * 20);
+                pos.y = 510;
+            }
+            keys[i] = scene.add.sprite(pos.x, pos.y, 'keyboard', index + 't').setScale(2).setInteractive();
+            keys[i].on('pointerdown', function () {
+                this.setTexture('keyboard', index + 'f');
+                if(index === 'power-') {
+                    mainConfig.pcTimerPushed = true;
+                    mainConfig.pcTimer = 0;
+                }
+            });
+            keys[i].on('pointerup', function () {
+                this.setTexture('keyboard', index + 't');
+                keyboardAction(index);
+                if(index === 'power-') mainConfig.pcTimerPushed = false;
+            });
+            keys[i].on('pointerout', function () {
+                this.setTexture('keyboard', index + 't');
+                if(index === 'power-') mainConfig.pcTimerPushed = false;
+            });
+        }
+        ui.keyboard.add(keys);
+        }
+    setKeyboard();
+    ui.gameGroup.add([ui.gameBackground, ui.pc, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff]).setVisible(true);
 
     ui.dialogGroup = scene.add.container();
     ui.dialogBox = scene.add.rexNinePatch({
@@ -323,7 +401,7 @@ function setLayer(scene) {
     mainObject.group.add(object.list);
 
     ui.group = scene.add.container();
-    ui.group.add([ui.background, ui.mark, ui.next, ui.dialogGroup, ui.taskGroup, ui.largeText, ui.white, ui.title, ui.skip]);
+    ui.group.add([ui.background, ui.mark, ui.next, ui.gameGroup, ui.dialogGroup, ui.taskGroup, ui.largeText, ui.white, ui.title, ui.skip]);
 
     // 레이어 정렬
     mainObject.layer.add(mainObject.group);
@@ -337,6 +415,12 @@ function setAnimations(scene) {
         key: 'mark',
         frames: scene.anims.generateFrameNumbers('mark', { start: 0, end: 1, first: 0 }),
         frameRate: 2,
+        repeat: -1
+    });
+    scene.anims.create({
+        key: 'pc-err',
+        frames: scene.anims.generateFrameNumbers('pc-err', { start: 0, end: 5, first: 0 }),
+        frameRate: 24,
         repeat: -1
     });
 }
@@ -455,7 +539,58 @@ function typewriteText(object, txt, speed) {
         })
     }
 }
-
+function keyboardAction(key) {
+    if(key < 10){
+        if(ui.pcInfo.length === 4) return;
+        ui.pcInfo += '' + key;
+        ui.pcDown.setVisible(false);
+    }
+    if(key === 'esc-'){
+        ui.pcInfo = '';
+        ui.pcDown.setVisible(false);
+    }
+    if(key === 'danger-'){
+        ui.pcInfo = '';
+        ui.pcDown.setVisible(true);
+    }
+    if(key === 'enter-'){
+        if(ui.pcDown.visible === true){
+            pcShutDown();
+        }
+        else {
+            if(ui.pcInfo === '1234'){
+                pcShutDown();
+            }
+            else if(ui.pcInfo === '0000'){
+                pcShutDown();
+            }
+        }
+    }
+    for (let i = 0; i < 4; i++) {
+        ui.pcPwList[i].setVisible(false);
+    }
+    for (let i = 0; i < ui.pcInfo.length; i++) {
+        ui.pcPwList[i].setVisible(true);
+    }
+    console.log(ui.pcInfo);
+}
+function pcShutDown() {
+    ui.pcOff.setVisible(true);
+    game.scene.scenes[0].tweens.addCounter({
+        from: 255,
+        to: 0,
+        duration: 1800,
+        ease: Phaser.Math.Easing.Quintic.In,
+        onUpdate: function (tween)
+        {
+            const value = Math.floor(tween.getValue());
+            ui.pcOff.setFillStyle(Phaser.Display.Color.GetColor(value, value, value));
+        },
+        onComplete: function () {
+            console.log('pc shut down')
+        }
+    });
+}
 // TODO 이벤트 메서드
 function skip() {
     if(status.scene === 'title'){
@@ -517,10 +652,6 @@ function dialog() {
         status.index++;
     }
     else {
-        if(!ui.dialogGroup.visible) {
-            ui.skip.setVisible(true);
-            ui.dialogGroup.setVisible(true);
-        }
         typewriteText(ui.dialog, line.story[status.chapterIdx][status.index], 60);
     }
 }
@@ -550,7 +681,8 @@ function eventByIndex(){
                 ui.mark.setVisible(false);
                 setVisibleObjects(true, [mainObject.dom, ui.skip, ui.dialogGroup]);
                 moveToPoint(mainObject.player, mainObject.dom.x + 60, mainObject.dom.y, true);
-                mainConfig.lookAt = [mainObject.player, mainObject.dom];
+                mainConfig.lookAt.player = mainObject.dom;
+                mainConfig.lookAt.dom = mainObject.player;
                 dialog();
                 mainObject.dom.play('dom-talk');
                 setTask(false);
@@ -560,13 +692,14 @@ function eventByIndex(){
             setTask(true);
             setTimeout(() => mainConfig.playerMovable = true, 20);
             moveToPoint(mainObject.dom, display.centerW, display.centerH + 80);
-            mainConfig.moveFinishedEvent = function () {
+            mainConfig.moveFinishedEvent.player = function () {
                 let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
                     col.active = false;
                     setTask(false);
                     setVisibleObjects(true, [ui.skip, ui.dialogGroup]);
                     mainConfig.playerMovable = false;
-                    mainConfig.lookAt = [mainObject.player, mainObject.dom];
+                    mainConfig.lookAt.player = mainObject.dom;
+                    mainConfig.lookAt.dom = mainObject.player;
                     moveToPoint(mainObject.player, mainObject.dom.x - 60, mainObject.dom.y, true);
                     dialog();
                     mainObject.dom.play('dom-talk');
@@ -599,17 +732,37 @@ function eventByIndex(){
     if(chapter === 1) {
         if (index === 3) {
             setTimeout(function () {
+                setTask(true);
+                mainObject.dom.play('dom-stand');
                 mainConfig.playerMovable = true;
                 mainConfig.domFollow = true;
             }, 0);
             let col = scene.physics.add.overlap(mainObject.player, mainObject.engineer, function () {
                 col.active = false;
+                setTask(false);
                 mainConfig.playerMovable = false;
-                mainConfig.lookAt = [mainObject.player, mainObject.engineer];
+                mainConfig.domFollow = false;
+                mainConfig.lookAt.player = mainObject.engineer;
+                mainConfig.lookAt.engineer = mainObject.player;
                 moveToPoint(mainObject.player, mainObject.engineer.x + 60, mainObject.engineer.y, true);
+                moveToPoint(mainObject.dom, mainObject.engineer.x - 60, mainObject.engineer.y, true);
+                if(!ui.dialogGroup.visible) {
+                    ui.skip.setVisible(true);
+                    ui.dialogGroup.setVisible(true);
+                }
                 dialog();
                 mainObject.engineer.play('en-talk');
             }, null, this);
+        }
+        else if (index === 7) {
+            mainObject.engineer.play('en-stand');
+        }
+        else if (index === 8) {
+            mainObject.engineer.play('en-talk');
+        }
+        else if (index === 13){
+            setTask(true);
+            ui.gameGroup.setVisible(true);
         }
     }
 }
@@ -621,21 +774,32 @@ function setVisibleObjects(bool, arr) {
 }
 function moveFinished(character) {
     // 이동 완료 후 바라보기
-    if(mainConfig.lookAt !== null) {
-        if(!Array.isArray(mainConfig.lookAt)) return;
-        mainConfig.lookAt[0].setFlipX(mainConfig.lookAt[0].x - mainConfig.lookAt[1].x > 0);
-        mainConfig.lookAt[1].setFlipX(mainConfig.lookAt[1].x - mainConfig.lookAt[0].x > 0);
-        mainConfig.lookAt = null;
+    let name = '';
+    if(character === mainObject.player){
+        name = 'player';
     }
-    if(mainConfig.moveFinishedEvent !== null) {
-        mainConfig.moveFinishedEvent();
-        mainConfig.moveFinishedEvent = null;
+    else if(character === mainObject.dom){
+        name = 'dom';
+    }
+    else if(character === mainObject.engineer){
+        name = 'engineer';
+    }
+    if(mainConfig.moveFinishedEvent[name] !== null) {
+        mainConfig.moveFinishedEvent[name]();
+        mainConfig.moveFinishedEvent[name] = null;
+    }
+    if(mainConfig.playerMovable) return;
+    for(value in mainConfig.lookAt){
+        if(mainConfig.lookAt[value] !== null) {
+            mainObject[value].setFlipX(mainObject[value].x - mainConfig.lookAt[value].x > 0);
+        }
     }
 }
 
 // TODO 씬 제어
 function chapterTitle(skip) {
     if(skip) {
+        status.chapterIdx = 1;
         chapterStart(status.chapterIdx);
         return;
     }
@@ -657,6 +821,7 @@ function chapterTitle(skip) {
         mainConfig.titleFadeOut = null;
         status.scene = 'chapter';
         status.index = 0;
+        status.taskIdx = 0;
         console.log(status.scene, status.chapterIdx);
         game.scene.scenes[0].tweens.add({
             targets: ui.background,
@@ -690,7 +855,9 @@ function chapterTitle(skip) {
             }
         }
         else if(chapterIdx === 1){
+            ui.skip.setVisible(false);
             maps.navMesh.destroy();
+            mainObject.dom.setVisible(true);
             maps.wallLayer[0].setVisible(false);
             maps.wallLayer[1].setVisible(true);
             maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[1], 12.5);
@@ -701,11 +868,20 @@ function chapterTitle(skip) {
             mainObject.engineer.setVisible(true);
             mainObject.player.x = mainObject.dom.x = display.centerW;
             mainObject.player.y = mainObject.dom.y = -80;
-            mainConfig.lookAt = [mainObject.player, mainObject.dom];
+
             moveToPoint(mainObject.player, display.centerW + 30, 100, false);
             moveToPoint(mainObject.dom, display.centerW - 30, 100, false);
-            mainConfig.moveFinishedEvent = function () {
+            mainConfig.moveFinishedEvent.player = function () {
+                mainConfig.lookAt.player = mainObject.dom;
+                mainConfig.lookAt.dom = mainObject.player;
+                if(!ui.dialogGroup.visible) {
+                    ui.skip.setVisible(true);
+                    ui.dialogGroup.setVisible(true);
+                }
                 dialog();
+            }
+            mainConfig.moveFinishedEvent.dom = function () {
+                mainObject.dom.play('dom-talk');
             }
         }
     }
