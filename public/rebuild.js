@@ -58,7 +58,8 @@ const mainConfig = {
 
     // game 설정
     pcTimerPushed : false,
-    pcTimer : 0
+    pcTimer : 0,
+    clear : [false, false, false, false, false]
 }
 const timer = {};
 const event = {};
@@ -116,6 +117,7 @@ function create() {
     });
 }
 function update() {
+    // TODO 업데이트 프레임
     let dis = {
         player: Phaser.Math.Distance.Between(mainObject.player.x, mainObject.player.y, mainConfig.playerTarget.x, mainConfig.playerTarget.y),
         dom: Phaser.Math.Distance.Between(mainObject.dom.x, mainObject.dom.y, mainConfig.domTarget.x, mainConfig.domTarget.y),
@@ -165,7 +167,7 @@ function update() {
     mainObject.group.list.sort(function(a, b) {
         return a.y > b.y ? 1 : -1;
     });
-    if(mainConfig.pcTimerPushed) mainConfig.pcTimer++;
+    if(mainConfig.pcTimerPushed && !mainConfig.clear[0]) mainConfig.pcTimer++;
     if(mainConfig.pcTimer > 140) {
         mainConfig.pcTimerPushed = false;
         mainConfig.pcTimer = 0;
@@ -540,6 +542,7 @@ function typewriteText(object, txt, speed) {
     }
 }
 function keyboardAction(key) {
+    if(mainConfig.clear[0]) return;
     if(key < 10){
         if(ui.pcInfo.length === 4) return;
         ui.pcInfo += '' + key;
@@ -575,6 +578,7 @@ function keyboardAction(key) {
     console.log(ui.pcInfo);
 }
 function pcShutDown() {
+    mainConfig.clear[0] = true;
     ui.pcOff.setVisible(true);
     game.scene.scenes[0].tweens.addCounter({
         from: 255,
