@@ -90,16 +90,17 @@ function preload() {
     this.load.aseprite('character', 'image/character.png', 'image/character.json');
     this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
     // UI
+    this.load.image('transition', 'image/transition0.png');
     this.load.image('nineslice', 'image/nineslice.png');
     this.load.image('nineslice-task', 'image/nineslice-task.png');
     this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
     this.load.image("pc", "image/pc.png");
+    this.load.image("pc-parts", "image/pcParts.png");
     this.load.spritesheet('pc-err', 'image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
     this.load.atlas('keyboard', 'image/keyboard.png', 'image/keyboard.json');
     // plugins
     this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
     // particle
-    this.load.image('particle', 'image/particle.png');
     this.load.atlas("leaf", "image/leaf.png", 'image/leaf.json');
 }
 function create() {
@@ -113,6 +114,7 @@ function create() {
     buildMap(this);
     setLayer(this);
     this.input.on('pointerup', pointer => {
+        createParts(pointer.x, pointer.y, RandomPlusMinus() * 200, Math.random() * -400);
         if(!mainConfig.playerMovable) return;
         mainConfig.playerCount = 1;
         mainConfig.playerPath = maps.navMesh.findPath(mainObject.player, { x: pointer.x, y: pointer.y });
@@ -176,7 +178,7 @@ function update() {
     if(mainConfig.pcTimer > 140) {
         mainConfig.pcTimerPushed = false;
         mainConfig.pcTimer = 0;
-        pcShutDown();
+        pcShutDown('power');
     }
 }
 
@@ -243,7 +245,16 @@ function createUIObjects(scene) {
     scene.physics.add.existing(ui.next);
 
     ui.gameGroup = scene.add.container();
+    ui.pcParts = scene.physics.add.group({
+        key: 'pc-parts',
+        visible: false,
+        active: false,
+        frameQuantity: 12,
+        repeat: 10
+    });
     ui.gameBackground = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
+    ui.gameTransitionUp = scene.add.sprite(display.centerW, 0, 'transition').setOrigin(0.5, 1).setFlipY(true).setScale(2);
+    ui.gameTransitionDown = scene.add.sprite(display.centerW, display.height, 'transition').setOrigin(0.5, 0).setScale(2);
     ui.pc = scene.add.sprite(display.centerW, display.centerH, 'pc').setOrigin(0.5).setScale(2);
     ui.pcOff = scene.add.rectangle(display.centerW, display.centerH - 137, 188, 158, 0xffffff).setVisible(false);
     ui.pcErr = scene.add.sprite(display.centerW, display.centerH - 136).play('pc-err').setOrigin(0.5).setScale(2);
@@ -307,8 +318,8 @@ function createUIObjects(scene) {
         ui.keyboard.add(keys);
         }
     setKeyboard();
-    ui.gameGroup.add([ui.gameBackground, ui.pc, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff]).setVisible(true);
-
+    ui.effectGroup = scene.add.container();
+    ui.gameGroup.add([ui.gameBackground, ui.pc, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff, ui.gameTransitionDown, ui.gameTransitionUp]).setVisible(false);
     ui.dialogGroup = scene.add.container();
     ui.dialogBox = scene.add.rexNinePatch({
         x: display.centerW, y: display.height - 10,
@@ -319,7 +330,6 @@ function createUIObjects(scene) {
     }).setOrigin(0.5, 1).setScale(2);
     ui.dialog = scene.add.text(30, display.height - 160, '', fontConfig).setFontSize(16).setLineSpacing(4);
     ui.dialogGroup.add([ui.dialogBox, ui.dialog]).setVisible(false);
-
     ui.taskGroup = scene.add.container();
     ui.task = scene.add.text(42, 34, '', fontConfig).setFontSize(16).setLineSpacing(4);
     ui.taskBox = scene.add.rexNinePatch({
@@ -361,7 +371,7 @@ function setTask(visible) {
 function createParticles(scene) {
     // 파티클 생성
     let emitZone = new Phaser.Geom.Rectangle(-200, -600, 200, 1200);
-    mainObject.particles = scene.add.particles('particle');
+    mainObject.particles = scene.add.particles('obj', 'particle');
     let emitter = mainObject.particles.createEmitter({
         x: 0,
         y: 0,
@@ -414,6 +424,7 @@ function setLayer(scene) {
     mainObject.layer.add(mainObject.group);
     mainObject.layer.add(mainObject.particles);
     mainObject.layer.add(ui.group);
+    mainObject.layer.add(ui.effectGroup);
     mainObject.layer.add(mainObject.TitleParticle);
 }
 function setAnimations(scene) {
@@ -563,14 +574,27 @@ function keyboardAction(key) {
     }
     if(key === 'enter-'){
         if(ui.pcDown.visible === true){
-            pcShutDown();
+            pcShutDown('danger');
         }
         else {
-            if(ui.pcInfo === '1234'){
-                pcShutDown();
-            }
-            else if(ui.pcInfo === '0000'){
-                pcShutDown();
+            if(ui.pcInfo.length === 4){
+                if(ui.pcInfo === '1234'){
+                    pcShutDown('1234');
+                }
+                else if(ui.pcInfo === '0000'){
+                    pcShutDown('0000');
+                }
+                else {
+                    for (let i = 0; i < 4; i++) {
+                        shakeObject(ui.pcPw, 10, 10, 240);
+                        setTimeout(function () {
+                            ui.pcInfo = '';
+                            for (let i = 0; i < 4; i++) {
+                                ui.pcPwList[i].setVisible(false);
+                            }
+                        }, 420);
+                    }
+                }
             }
         }
     }
@@ -580,12 +604,25 @@ function keyboardAction(key) {
     for (let i = 0; i < ui.pcInfo.length; i++) {
         ui.pcPwList[i].setVisible(true);
     }
-    console.log(ui.pcInfo);
 }
-function pcShutDown() {
+function pcShutDown(way) {
+    if(way === '1234'){
+        line.story[1][14] = "[폰 왈도 노이만 3세]\n어떻게 비밀번호를 알아냈지?!\n천재가 분명해! 자네..";
+    }
+    else if(way === '0000'){
+        line.story[1][14] = "[폰 왈도 노이만 3세]\n초기화 패스워드 0000이라..자네..\n나랑 일해볼 생각 없나..?";
+    }
+    else if(way === 'power'){
+        line.story[1][14] = "[폰 왈도 노이만 3세]\n파워를 직접적으로 차단한다..\n자네.. 컴퓨터를 좀 아는군?";
+    }
+    else if(way === 'danger'){
+        line.story[1][14] = "[폰 왈도 노이만 3세]\n그 버튼은 무서워서 단 한번도\n못 눌러봤는데.. 대담한 친구로군..";
+    }
+
+    let scene = game.scene.scenes[0];
     mainConfig.clear[0] = true;
     ui.pcOff.setVisible(true);
-    game.scene.scenes[0].tweens.addCounter({
+    scene.tweens.addCounter({
         from: 255,
         to: 0,
         duration: 1800,
@@ -596,11 +633,37 @@ function pcShutDown() {
             ui.pcOff.setFillStyle(Phaser.Display.Color.GetColor(value, value, value));
         },
         onComplete: function () {
-            console.log('pc shut down')
+            console.log('pc shut down');
+            setTask(false);
+            scene.tweens.add({
+                targets: ui.gameGroup,
+                y: -800,
+                duration: 1600,
+                ease: Phaser.Math.Easing.Quintic.In,
+                onComplete: function () {
+                    ui.gameGroup.setVisible(false);
+                    ui.skip.setVisible(true);
+                    ui.dialogGroup.setVisible(true);
+                    dialog();
+                }
+            });
         }
     });
 }
 // TODO 이벤트 메서드
+function createParts(x, y, vx, vy)
+{
+    let part =  ui.pcParts.get();
+    if (!part) return;
+    ui.effectGroup.add(part);
+    part
+        .setScale(2)
+        .setGravityY(800)
+        .enableBody(true, x, y, true, true)
+        .setVelocity(vx, vy)
+        .setAngularVelocity(400);
+
+}
 function skip() {
     if(status.scene === 'title'){
         if(mainConfig.debugMode){
@@ -771,7 +834,14 @@ function eventByIndex(){
         }
         else if (index === 13){
             setTask(true);
+            ui.gameGroup.y = 600;
             ui.gameGroup.setVisible(true);
+            scene.tweens.add({
+                targets: ui.gameGroup,
+                y: 0,
+                duration: 2000,
+                ease: Phaser.Math.Easing.Quintic.Out
+            });
         }
     }
 }
