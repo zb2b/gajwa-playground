@@ -281,12 +281,72 @@
   }
   ,
   {
+        "filename": "parts1",
+        "frame":  { "x": 0, "y" :65, "w" :16, "h" :15 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :15 },
+        "sourceSize": { "w" :16, "h" :15 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "parts2",
+        "frame":  { "x": 16, "y" :80, "w" :16, "h" :16 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
+        "sourceSize": { "w" :16, "h" :16 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "parts3",
+        "frame":  { "x": 16, "y" :65, "w" :16, "h" :15 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :15 },
+        "sourceSize": { "w" :16, "h" :15 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "parts0",
+        "frame":  { "x": 0, "y" :80, "w" :16, "h" :16 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
+        "sourceSize": { "w" :16, "h" :16 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
         "filename": "down",
-        "frame":  { "x": 0, "y" :64, "w" :64, "h" :48 },
+        "frame":  { "x": 64, "y" :24, "w" :64, "h" :48 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :64, "h" :48 },
         "sourceSize": { "w" :64, "h" :48 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "crack0",
+        "frame":  { "x": 0, "y" :96, "w" :32, "h" :16 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
+        "sourceSize": { "w" :32, "h" :16 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "crack1",
+        "frame":  { "x": 0, "y" :112, "w" :32, "h" :16 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
+        "sourceSize": { "w" :32, "h" :16 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ]

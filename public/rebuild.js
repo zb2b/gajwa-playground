@@ -59,6 +59,7 @@ const mainConfig = {
     // game 설정
     pcTimerPushed : false,
     pcTimer : 0,
+    pcCrackCount : 0,
     clear : [false, false, false, false, false]
 }
 const timer = {};
@@ -90,7 +91,6 @@ function preload() {
     this.load.image('nineslice-task', 'image/nineslice-task.png');
     this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
     this.load.image("pc", "image/pc.png");
-    this.load.image("pc-parts", "image/pcParts.png");
     this.load.spritesheet('pc-err', 'image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
     this.load.atlas('keyboard', 'image/keyboard.png', 'image/keyboard.json');
     // plugins
@@ -109,7 +109,6 @@ function create() {
     buildMap(this);
     setLayer(this);
     this.input.on('pointerup', pointer => {
-        createParts(pointer.x, pointer.y, RandomPlusMinus() * 200, Math.random() * -400);
         if(!mainConfig.playerMovable) return;
         mainConfig.playerCount = 1;
         mainConfig.playerPath = maps.navMesh.findPath(mainObject.player, { x: pointer.x, y: pointer.y });
@@ -239,14 +238,8 @@ function createUIObjects(scene) {
     ui.next = scene.add.rectangle(display.centerW, display.height - 30, display.width, 60, 0x00ff00).setVisible(false);
     scene.physics.add.existing(ui.next);
 
+    // 미니게임 창 생성
     ui.gameGroup = scene.add.container();
-    ui.pcParts = scene.physics.add.group({
-        key: 'pc-parts',
-        visible: false,
-        active: false,
-        frameQuantity: 12,
-        repeat: 10
-    });
     ui.gameBackground = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
     ui.gameTransitionUp = scene.add.sprite(display.centerW, 0, 'transition').setOrigin(0.5, 1).setFlipY(true).setScale(2);
     ui.gameTransitionDown = scene.add.sprite(display.centerW, display.height, 'transition').setOrigin(0.5, 0).setScale(2);
@@ -254,6 +247,10 @@ function createUIObjects(scene) {
     ui.pcOff = scene.add.rectangle(display.centerW, display.centerH - 137, 188, 158, 0xffffff).setVisible(false);
     ui.pcErr = scene.add.sprite(display.centerW, display.centerH - 136).play('pc-err').setOrigin(0.5).setScale(2);
     ui.pcDown = scene.add.sprite(display.centerW, display.centerH - 136, 'keyboard', 'down').setOrigin(0.5).setScale(2).setVisible(false);
+    ui.pcCrack = scene.add.sprite(display.centerW - 62, display.centerH + 60, 'keyboard', 'crack0').setOrigin(1).setScale(2).setVisible(false);
+    ui.pcBreak = scene.add.rectangle(display.centerW - 16, display.centerH + 48, 210, 100, 0x0000f00, 0).setInteractive().on('pointerup', pointer => {
+        createParts(pointer.x, pointer.y, RandomPlusMinus() * 200, -100 + Math.random() * -400);
+    });
     ui.pcPw = scene.add.container();
     ui.pcPwList = [];
     ui.pcInfo = '';
@@ -313,8 +310,24 @@ function createUIObjects(scene) {
         ui.keyboard.add(keys);
         }
     setKeyboard();
+
+    // 클릭 효과 생성
+    ui.pcParts = scene.physics.add.group({
+        visible: false,
+        active: false,
+        frameQuantity: 10,
+        maxSize: 10
+    });
     ui.effectGroup = scene.add.container();
-    ui.gameGroup.add([ui.gameBackground, ui.pc, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff, ui.gameTransitionDown, ui.gameTransitionUp]).setVisible(false);
+    ui.bottom = scene.add.rectangle(display.centerW, display.height + 80, 4000, 10, 0x000000, 0);
+    scene.physics.add.overlap(ui.bottom, ui.pcParts, disableParts, null, this);
+    scene.physics.add.existing(ui.bottom);
+    ui.effectGroup.add(ui.bottom);
+    function disableParts(bottom, parts) {
+        // 떨어진 나사 제거
+        parts.disableBody(true, true);
+    }
+    ui.gameGroup.add([ui.gameBackground, ui.pc, ui.pcCrack, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff, ui.pcBreak, ui.gameTransitionDown, ui.gameTransitionUp]).setVisible(false);
     ui.dialogGroup = scene.add.container();
     ui.dialogBox = scene.add.rexNinePatch({
         x: display.centerW, y: display.height - 10,
@@ -343,8 +356,8 @@ function createUIObjects(scene) {
 }
 function setTask(visible) {
     let scene = game.scene.scenes[0];
-    let pos = 0;
-    let ease = null;
+    let pos;
+    let ease;
     if (visible){
         pos = 0;
         ease = Phaser.Math.Easing.Quintic.Out;
@@ -378,8 +391,8 @@ function createParticles(scene) {
         scale: 2,
         emitZone: { source: emitZone }
     });
-
     let titlezone = new Phaser.Geom.Rectangle(0, -60, display.width, 10);
+
     mainObject.TitleParticle = scene.add.particles('leaf');
     mainObject.TitleEmitter = mainObject.TitleParticle.createEmitter({
         frame: [ '0', '1', '2', '3'],
@@ -645,20 +658,32 @@ function pcShutDown(way) {
         }
     });
 }
-// TODO 이벤트 메서드
 function createParts(x, y, vx, vy)
 {
+    mainConfig.pcCrackCount++;
+    if(mainConfig.pcCrackCount === 10) ui.pcCrack.setVisible(true);
+    else if(mainConfig.pcCrackCount > 30){
+        ui.pcCrack.setTexture('keyboard', 'crack1').setOrigin(1);
+    }
     let part =  ui.pcParts.get();
     if (!part) return;
     ui.effectGroup.add(part);
+    let r = Math.random();
+    if(r > 0 && 0.25 < r) part.setTexture('keyboard', 'parts0');
+    else if(r > 0.25 && 0.5 < r) part.setTexture('keyboard', 'parts1');
+    else if(r > 0.5 && 0.75 < r) part.setTexture('keyboard', 'parts2');
+    else part.setTexture('keyboard', 'parts3');
     part
+        .setOrigin(0.5)
         .setScale(2)
+        .setGravityY(0)
         .setGravityY(800)
         .enableBody(true, x, y, true, true)
         .setVelocity(vx, vy)
         .setAngularVelocity(400);
 
 }
+// TODO 이벤트 메서드
 function skip() {
     if(status.scene === 'title'){
         if(mainConfig.debugMode){
