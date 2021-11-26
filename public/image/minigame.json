@@ -1,0 +1,23 @@
+{
+"frames":[
+  {
+        "filename": "pc",
+        "frame":  { "x": 0, "y" :0, "w" :160, "h" :320 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :160, "h" :320 },
+        "sourceSize": { "w" :160, "h" :320 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "fishing",
+        "frame":  { "x": 160, "y" :0, "w" :80, "h" :160 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :80, "h" :160 },
+        "sourceSize": { "w" :80, "h" :160 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ]
+}

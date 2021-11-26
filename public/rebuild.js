@@ -1,6 +1,6 @@
 console.log("%c@ MYZY.SPACE 2021 POWERED BY MYZY_", "color: #00ff00; font-weight: 900; font-size: 1em; background-color: black; padding: 1rem");
 const font = new FontFaceObserver('dgm').load();
-const display = {width : 320, height: 640, centerW : 160, centerH: 320 };
+const display = {width : 360, height: 680, centerW : 180, centerH: 340 };
 const fontConfig = {font: '32px "dgm"', color: '#fff'};
 const config = {
     type: Phaser.AUTO,
@@ -28,7 +28,8 @@ const config = {
                 start: true
             },
         ]
-    }
+    },
+    mode: Phaser.Scale.FIT,
 };
 const game = new Phaser.Game(config);
 const mainObject = {
@@ -45,8 +46,8 @@ const moveTargets = {
 };
 const mainConfig = {
     debugMode : true,
-    debugModeChapter: 2,
-    
+    debugModeChapter: 3,
+
     playerMovable : false,
     domFollow: false,
 
@@ -65,9 +66,38 @@ const mainConfig = {
     pcCrackCount : 0,
     clear : [false, false, false, false, false],
     reward: [0, 0, 0, 0, 0],
+    livingSheep: 0,
+    sheepJump: null,
+    sheepLast : [],
+    sheepBlinkTimer : [null, null, null, null, null],
+    bridgeJumpingNow: false,
     bridgeSelection: 0,
     bridgeAnswer : [1, 2, 5, 7, 8],
-    bridgeFail : [0, 3, 4, 6, 9]
+    bridgeFail : [0, 3, 4, 6, 9],
+    sheepEndPos : [
+        {x: 40, y: display.height - 80},
+        {x: 40, y: display.height - 20},
+        {x: 80, y: display.height - 50},
+        {x: 120, y: display.height - 20},
+        {x: 120, y: display.height - 80},
+    ],
+    deadSheep : [],
+    bridgePos : {
+        start: {x: display.centerW, y: 192},
+        end: {x: display.centerW + 60, y: display.height - 100}
+    },
+
+    fishingbarGrav: null,
+    fishCasting: null,
+    fishingBarSize: 40,
+    fishFloatTween: [],
+    fishingTimer: null,
+    fishingFailTimer: null,
+    fishWait: false,
+    fishingRodOn: false,
+    fishingNow: false,
+    fishPoint: 0,
+    fishRun: 0
 }
 const timer = {};
 const event = {};
@@ -86,27 +116,38 @@ function preload() {
     // TODO 프리로드
     // data
     this.load.json('text', 'data/text.json');
-    // tile
-    this.load.tilemapTiledJSON("map", "map/newmap.json");
-    this.load.image("tileset", "map/set.png");
+    // tile map
+    this.load.tilemapTiledJSON("map", "map/map.json");
+    this.load.image("tileset", "map/tile-set.png");
     // sprites
-    this.load.aseprite('character', 'image/character.png', 'image/character.json');
+    this.load.aseprite('character', 'image/characters.png', 'image/characters.json');
     this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
+    this.load.spritesheet('pc', 'image/pc-obj.png', { frameWidth: 74, frameHeight: 92, endFrame: 2 });
     // UI
-    this.load.image('transition', 'image/transition0.png');
-    this.load.image('nineslice', 'image/nineslice.png');
-    this.load.image('nineslice-task', 'image/nineslice-task.png');
     this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
-    this.load.image("pc", "image/pc.png");
+    this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 4 });
+    this.load.atlas('minigame', 'image/minigame.png', 'image/minigame.json');
     this.load.spritesheet('pc-err', 'image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
     this.load.spritesheet('bridge', 'image/bridge.png', { frameWidth: 32, frameHeight: 32, endFrame: 9 });
+    this.load.spritesheet('float-water', 'image/float-water.png', { frameWidth: 64, frameHeight: 32, endFrame: 18 });
+    this.load.spritesheet('fish-icon', 'image/fish-icon.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
     this.load.atlas('keyboard', 'image/keyboard.png', 'image/keyboard.json');
+    this.load.atlas('ui', 'image/ui.png', 'image/ui.json');
     // plugins
     this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
     // particle
     this.load.atlas("leaf", "image/leaf.png", 'image/leaf.json');
+
+    //sample
+    this.load.image('sample', 'image/sample/3.png');
 }
 function create() {
+    const resetConfig = {};
+    Object.keys(mainConfig).forEach(function (v) {
+        resetConfig[v] = mainConfig[v];
+    });
+
+    status.chapterIdx = mainConfig.debugModeChapter;
     setLines(this);
     setAnimations(this);
     createGraphics(this);
@@ -120,10 +161,54 @@ function create() {
         if(!mainConfig.playerMovable) return;
         mainConfig.pathCount.player = 1;
         path.set('player', maps.navMesh.findPath(mainObject.player, { x: pointer.x, y: pointer.y }));
-        if(path.get('player') === null || path.get('player').length < 1) return;
+        if(path.get('player') === null){
+            let length = 10;
+            const anglePos = [
+                {x: -length, y: 0},
+                {x: 0, y: -length},
+                {x: length, y: 0},
+                {x: 0, y: length}
+            ];
+            newPathFind();
+            function newPathFind() {
+                let newPath;
+                for (let i = 0; i < 4; i++) {
+                    newPath = maps.navMesh.findPath(mainObject.player, { x: pointer.x + anglePos[i].x, y: pointer.y + anglePos[i].y })
+                    if(newPath !== null) {
+                        path.set('player', newPath);
+                        break;
+                    }
+                }
+                if(newPath === null){
+                    length += 10;
+                    anglePos[0] = {x: -length, y: 0};
+                    anglePos[1] = {x: 0, y: -length};
+                    anglePos[2] = {x: length, y: 0};
+                    anglePos[3] = {x: 0, y: length};
+                    newPathFind();
+                }
+            }
+        }
+        if(path.get('player').length < 1) return;
         moveCharacter('player');
-        //path_log();
     });
+    this.input.keyboard.addKey('Q').on('down', function(event) {
+        console.log('Reset');
+        resetGame(resetConfig);
+    })
+}
+function resetGame(resetConfig) {
+    game.scene.scenes[0].scene.restart();
+    Object.keys(mainConfig).forEach(function (v) {
+        mainConfig[v] = resetConfig[v];
+    });
+    moveTargets.player = {x: 0, y: 0};
+    moveTargets.dom = {x: 0, y: 0};
+    moveTargets.engineer = {x: 0, y: 0};
+    status.scene ='title';
+    status.index =0;
+    status.chapterIdx =0;
+    status.taskIdx =0;
 }
 function update() {
     // TODO 업데이트 프레임
@@ -190,6 +275,81 @@ function update() {
             }
         }
     }
+    if(status.chapterIdx === 2){
+        if(status.index === 13){
+            if(mainConfig.bridgeSelection < 5){
+                for (let i = 0; i < mainObject.sheeps.length; i++){
+                    let sheepDis = Phaser.Math.Distance.Between(
+                        mainObject.sheeps[i].x,
+                        mainObject.sheeps[i].y,
+                        mainConfig.bridgePos.start.x,
+                        mainConfig.bridgePos.start.y);
+                    if(mainObject.sheeps[i].body.speed > 0){
+                        if (sheepDis < 4){
+                            mainObject.sheeps[i].body.reset(mainObject.sheeps[i].x, mainObject.sheeps[i].y);
+                            mainObject.sheeps[i].play('sheep-stand');
+                            if(mainConfig.sheepJump !== null) {
+                                mainConfig.sheepJump();
+                                mainConfig.sheepJump = null;
+                            }
+                        }
+                    }
+                }
+                for (let i = 0; i < mainConfig.deadSheep.length; i++) {
+                    if(mainConfig.deadSheep[i].x < -16){
+                        mainConfig.deadSheep[i].disableBody();
+                        mainConfig.deadSheep[i].setVisible(false);
+                    }
+                }
+            }
+            else {
+                for (let i = 0; i < mainObject.sheeps.length; i++) {
+                    if(mainObject.sheeps[i].body.speed > 0){
+                        let sheepDis = Phaser.Math.Distance.Between(
+                            mainObject.sheeps[i].x,
+                            mainObject.sheeps[i].y,
+                            mainConfig.sheepLast[i].x,
+                            mainConfig.sheepLast[i].y);
+                        if(sheepDis < 4){
+                            mainObject.sheeps[i].body.reset(mainObject.sheeps[i].x, mainObject.sheeps[i].y);
+                            mainObject.sheeps[i].play('sheep-stand');
+                            if(i === mainObject.sheeps.length - 1) {
+                                setTimeout(function () {
+                                    sheepFinish();
+                                }, 400);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if(status.chapterIdx === 3){
+        if(mainConfig.fishingNow){
+            const side = {top: ui.fishingBar.y - mainConfig.fishingBarSize * 0.5, bottom: ui.fishingBar.y + mainConfig.fishingBarSize * 0.5};
+            if(side.top < ui.fishIcon.y && ui.fishIcon.y < side.bottom){
+                ui.fishIcon.setTint(0x00ff00);
+                if(mainConfig.fishPoint < 320) mainConfig.fishPoint++;
+                else if(mainConfig.fishPoint === 320) {
+                    // 잡음
+                    mainConfig.fishPoint = 0;
+                    fishingFinish(true);
+                }
+            } else {
+                ui.fishIcon.setTint(0xff0000);
+                if(mainConfig.fishPoint > 0) mainConfig.fishPoint--;
+                else if(mainConfig.fishPoint === 0) {
+                    mainConfig.fishRun++;
+                    if(mainConfig.fishRun > 320){
+                        // 도망
+                        mainConfig.fishRun = 0;
+                        fishingFinish(false);
+                    }
+                }
+            }
+        }
+    }
+
     // 레이어 순서 정렬
     mainObject.group.list.sort(function(a, b) {
         return a.y > b.y ? 1 : -1;
@@ -213,7 +373,7 @@ function buildMap(scene) {
     maps.wallLayer = [];
     maps.objectLayer = [];
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
         maps.wallLayer[i] = maps.tilemap.createLayer("display" + i, maps.tileset).setVisible(false);
         maps.objectLayer[i] = maps.tilemap.getObjectLayer(i.toString());
     }
@@ -231,14 +391,30 @@ function createCharacters(scene) {
         else mainConfig.anims[i].frameRate = chracterData[i].frameRate;
     }
 
-    mainObject.player = scene.physics.add.sprite(display.centerW, 180)
+    mainObject.player = scene.physics.add.sprite(display.centerW, display.centerH - 40)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('player-stand');
-    mainObject.dom = scene.physics.add.sprite(display.centerW - 60, 180)
+    mainObject.dom = scene.physics.add.sprite(display.centerW - 60, display.centerH - 60)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('dom-stand').setVisible(false);
-    mainObject.engineer = scene.physics.add.sprite(display.centerW, display.centerH + 80)
-        .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('engineer-stand').setVisible(false);
-    mainObject.man = scene.physics.add.sprite(display.centerW + 92, display.centerH - 16).play('man-stand')
+    mainObject.engineer = scene.physics.add.sprite(104, 506)
+        .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('engineer-type').setVisible(false);
+    mainObject.man = scene.physics.add.sprite(display.centerW + 86, 180).play('man-stand')
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).setFlipX(true).setVisible(false);
+    mainObject.fishman = scene.physics.add.sprite(146, 396).play('fishman-stand')
+        .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).setVisible(false);
+
+    mainObject.sheeps = [];
+    const sheepPos = [
+        { x: 290, y: 60 },
+        { x: 240, y: 80 },
+        { x: 290, y: 140 },
+        { x: 260, y: 120 },
+        { x: 280, y: 100 }
+        ]
+    for (let i = 0; i < 5; i++) {
+        mainObject.sheeps[i] = scene.physics.add.sprite(sheepPos[i].x, sheepPos[i].y).play('sheep-stand')
+            .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).setFlipX(Math.random() > 0.5).setVisible(false);
+        mainConfig.sheepBlinkTimer[i] = getRandomInt(160);
+    }
 }
 function createGraphics(scene) {
     // TODO 그래픽 생성
@@ -250,26 +426,33 @@ function createGraphics(scene) {
 function createUIObjects(scene) {
     // TODO UI 오브젝트 생성
     ui.cam = scene.cameras.main;
+    ui.bg = scene.add.sprite(0, 0, 'bg').setOrigin(0).setScale(2);
+    ui.smoke = scene.add.sprite(200, 100).play('smoke').setScale(2).setVisible(false);
+
     ui.skip = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0)
         .setInteractive();
     ui.white = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0xffffff);
     ui.background = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
+
     ui.dark = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000).setVisible(false);
-    ui.title = scene.add.sprite(display.centerW, 180, 'obj', 'title').setOrigin(0.5).setScale(2);
+    ui.title = scene.add.sprite(display.centerW, 180, 'ui', 'title').setOrigin(0.5).setScale(2);
     ui.largeText = scene.add.text(display.centerW, display.centerH, '', fontConfig)
         .setAlign('center').setOrigin(0.5).setVisible(false);
-    ui.mark = scene.add.sprite(display.centerW - 60, 180, 'mark').play('mark')
+    ui.mark = scene.add.sprite(display.centerW - 60, display.centerH - 60, 'mark').play('mark')
         .setOrigin(0.5, 1).setScale(2).setVisible(false);
 
-    ui.next = scene.add.rectangle(display.centerW, display.height - 30, display.width, 60, 0x00ff00).setVisible(false);
-    scene.physics.add.existing(ui.next);
+    ui.next = scene.physics.add.sprite(display.centerW - 60, display.height - 10).play('next')
+        .setSize(display.width, 20).setScale(2).setOffset(-60, 30).setVisible(false);
+
+    ui.fishmanPlace = scene.add.rectangle(80, display.height - 160, 160, 100, 0x00ff00).setVisible(false);
+    scene.physics.add.existing(ui.fishmanPlace);
 
     // 미니게임 창 생성
     ui.gameGroup = scene.add.container();
     ui.gameBackground = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
-    ui.gameTransitionUp = scene.add.sprite(display.centerW, 0, 'transition').setOrigin(0.5, 1).setFlipY(true).setScale(2);
-    ui.gameTransitionDown = scene.add.sprite(display.centerW, display.height, 'transition').setOrigin(0.5, 0).setScale(2);
-    ui.pc = scene.add.sprite(display.centerW, display.centerH, 'pc').setOrigin(0.5).setScale(2);
+    ui.gameTransitionUp = scene.add.sprite(display.centerW, 0, 'ui', 'transition').setOrigin(0.5, 0).setFlipY(true).setScale(2);
+    ui.gameTransitionDown = scene.add.sprite(display.centerW, display.height, 'ui', 'transition').setOrigin(0.5, 0).setScale(2);
+    ui.pc = scene.add.sprite(display.centerW, display.centerH, 'minigame', 'pc').setOrigin(0.5).setScale(2);
     ui.pcOff = scene.add.rectangle(display.centerW, display.centerH - 137, 188, 158, 0xffffff).setVisible(false);
     ui.pcErr = scene.add.sprite(display.centerW, display.centerH - 136).play('pc-err').setOrigin(0.5).setScale(2);
     ui.pcDown = scene.add.sprite(display.centerW, display.centerH - 136, 'keyboard', 'down').setOrigin(0.5).setScale(2).setVisible(false);
@@ -292,28 +475,29 @@ function createUIObjects(scene) {
             let index = null;
             if(i === 10){
                 index = 'enter-';
-                pos.x = 238;
-                pos.y = 514;
+                pos.x = 268;
+                pos.y = 548;
             }
             else if(i === 11){
                 index = 'esc-';
-                pos.x = 38;
-                pos.y = 482;
+                pos.x = 52;
+                pos.y = 484;
             }
             else if(i === 12){
                 index = 'danger-';
-                pos.x = 38;
-                pos.y = 540;
+                pos.x = 52;
+                pos.y = 584;
             }
             else if(i === 13){
                 index = 'power-';
-                pos.x = 254;
-                pos.y = 340;
+                pos.x = 274;
+                pos.y = 362;
             }
             else{
                 index = i;
-                pos.x = 38 + (i * 20);
-                pos.y = 510;
+                let y = (i < 5) ? 520 : 548;
+                pos.x = (i < 5) ? 52 + (i * 40) : 68 + ((i - 5) * 40);
+                pos.y = y;
             }
             keys[i] = scene.add.sprite(pos.x, pos.y, 'keyboard', index + 't').setScale(2).setInteractive();
             keys[i].on('pointerdown', function () {
@@ -344,6 +528,14 @@ function createUIObjects(scene) {
         frameQuantity: 10,
         maxSize: 10
     });
+    // 낚시찌 물튐 효과 생성
+    ui.floatWater = scene.add.sprite(0, 0, 'float-water').setOrigin(0.5).setScale(2).setVisible(false);
+    ui.floatWaterWave = scene.add.group({
+        visible: false,
+        frameQuantity: 10,
+        maxSize: 10,
+    });
+
     ui.effectGroup = scene.add.container();
     ui.bottom = scene.add.rectangle(display.centerW, display.height + 80, 4000, 10, 0x000000, 0);
     scene.physics.add.overlap(ui.bottom, ui.pcParts, disableParts, null, this);
@@ -353,7 +545,6 @@ function createUIObjects(scene) {
         // 떨어진 나사 제거
         parts.disableBody(true, true);
     }
-    // 스테이지 별 미니게임 씬 오브젝트 추가
     // 징검다리 생성
     ui.bridges = [];
     let bridgeR = 1;
@@ -370,14 +561,155 @@ function createUIObjects(scene) {
             line += h * (i / 2) - h * 0.5;
             side = bridgeR * 16 - 48;
         }
-        ui.bridges[i] = scene.add.sprite(display.centerW + side,
-            160 + line, 'bridge').setScale(2).setOrigin(0.5, 0);
+        ui.bridges[i] = scene.add.sprite(display.centerW + 24 + side,
+            240 + line, 'bridge').setScale(2).setOrigin(0.5, 0);
     }
+    // 낚시게임 생성
+    ui.fishing = scene.add.sprite(display.centerW, display.centerH, 'minigame', 'fishing').setOrigin(0.5).setScale(3);
+    ui.fishingCastbar = scene.add.rectangle(display.centerW, display.height - 8, 0, 16, 0x00ff00).setOrigin(0.5);
+
+    ui.fishingGroup = scene.add.container();
+    ui.fishingBox = [];
+    ui.fishingBox[0] = scene.add.rectangle(display.centerW, display.centerH - 126, 80, 20, 0xffff00).setOrigin(0.5).setVisible(false);
+    ui.fishingBox[1] = scene.add.rectangle(display.centerW, display.centerH + 126, 80, 20, 0xffff00).setOrigin(0.5).setVisible(false);
+    ui.fishIcon = scene.physics.add.sprite(display.centerW -6, display.centerH - 80).play('fish-icon').setScale(2).setFlipX(true).setSize(16, 12).setOffset(0, 2);
+    ui.fishingUI = scene.add.rexNinePatch({
+        x: display.centerW, y: display.centerH,
+        width: 40, height: 120,
+        key: 'ui',
+        baseFrame: 'fishing-bg',
+        columns: [4, undefined, 4],
+        rows: [4, undefined, 4],
+    }).setOrigin(0.5).setScale(2);
+    ui.fishingBarBG = scene.add.rexNinePatch({
+        x: 0, y: 0,
+        width: 36, height: mainConfig.fishingBarSize,
+        key: 'ui',
+        baseFrame: 'fishing-area',
+        columns: [4, undefined, 4],
+        rows: [4, undefined, 4],
+    }).setOrigin(0.5).setScale(2);
+    ui.fishingHook = scene.add.sprite(0, -16, 'ui', 'fishing-hook').setOrigin(0.5).setScale(2);
+
+    ui.fishingBar = scene.add.container().setVisible(false);
+    ui.fishingEffect = scene.add.container();
+    ui.fishingBar.setPosition(display.centerW, display.centerH).setSize(60, mainConfig.fishingBarSize * 2);
+    ui.fishingBar.add([ui.fishingBarBG, ui.fishingHook]);
+
+    ui.fishingGroup.add([ui.fishingUI, ui.fishingBox[0], ui.fishingBox[1], ui.fishingBar, ui.fishIcon]).setVisible(false);
+    ui.fishingEffect.add(ui.floatWater);
+
+    scene.physics.add.existing(ui.fishingBar);
+    scene.physics.add.existing(ui.fishingBox[0], true);
+    scene.physics.add.existing(ui.fishingBox[1], true);
+    scene.physics.add.collider(ui.fishingBox[0], ui.fishingBar);
+    scene.physics.add.collider(ui.fishingBox[1], ui.fishingBar);
+    scene.physics.add.collider(ui.fishingBox[0], ui.fishIcon);
+    scene.physics.add.collider(ui.fishingBox[1], ui.fishIcon);
+    ui.fishingBar.body.bounce.y = 0.5;
+
+    ui.fishAction = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000, 0);
+
+    ui.fishingFloat = scene.add.sprite(0, 0, 'ui', 'float').setOrigin(0.5).setScale(2).setVisible(false);
+    ui.fishAction.on('pointerdown', function () {
+        if(mainConfig.fishingNow){
+            mainConfig.fishingbarGrav = scene.tweens.addCounter({
+                from: 0,
+                to: -800,
+                ease: Phaser.Math.Easing.Linear,
+                duration: 1200,
+                onUpdate: function (tween)
+                {
+                    let value = Math.floor(tween.getValue());
+                    ui.fishingBar.body.setGravityY(value);
+                }
+            });
+        }
+        else {
+            cast();
+        }
+        function cast() {
+            clearTimeout(mainConfig.fishingTimer);
+            clearTimeout(mainConfig.fishingFailTimer);
+            mainConfig.fishCasting = null;
+            mainConfig.fishingTimer = null;
+
+            if(mainConfig.fishFloatTween[0]!==undefined) {
+                if(mainConfig.fishFloatTween[0].progress < 1) return;
+            }
+            if(mainConfig.fishingRodOn) {
+                // 물고기 입질이 있는 도중이면
+                if(mainConfig.fishWait){
+                    // 낚기 시작
+                    mainConfig.fishingNow = true;
+                    startFishing();
+                    return;
+                }
+                else {
+                    // 낚싯대 되돌리기
+                    ui.fishingFloat.setTexture('ui', 'float').setOrigin(0.5);
+                    ui.task.text = "길게 눌러서 낚싯대를 던지자";
+                    mainConfig.fishingRodOn = false;
+                    ui.fishingCastbar.width = 0;
+                    ui.fishingCastbar.setOrigin(0.5);
+                    ui.fishingFloat.setVisible(false);
+                    return;
+                }
+            }
+            let power = [0, 320];
+            casting(power);
+            function casting(power) {
+                let ease = (power[0] === 0) ? Phaser.Math.Easing.Quintic.In : Phaser.Math.Easing.Quintic.Out;
+                mainConfig.fishCasting = scene.tweens.addCounter({
+                    from: power[0],
+                    to: power[1],
+                    ease: ease,
+                    duration: 1200,
+                    repeat: 0,
+                    onUpdate: function (tween)
+                    {
+                        let value = Math.floor(tween.getValue());
+                        ui.fishingCastbar.width = value;
+                        ui.fishingCastbar.setOrigin(0.5);
+                    },
+                    onComplete: function () {
+                        let tmp = power[0];
+                        power[0] = power[1];
+                        power[1] = tmp;
+                        casting(power);
+                    }
+                });
+            }
+        }
+
+    }).on('pointerup', function () {
+        fishOut();
+    }).on('pointerout', function () {
+        fishOut();
+    });
+    function fishOut() {
+        if(mainConfig.fishingNow) {
+            mainConfig.fishingbarGrav?.stop();
+            ui.fishingBar.body.setGravityY(800);
+        }
+        else {
+            // 낚싯대 던지기 완료
+            if(mainConfig.fishCasting === null) return;
+            mainConfig.fishCasting?.stop();
+            let p = mainConfig.fishCasting.getValue();
+            fishingCastFloat(p);
+            mainConfig.fishCasting = 0;
+        }
+    }
+
+    // 스테이지 별 미니게임 씬 오브젝트 추가
     ui.gameScene = [];
     ui.gameScene[0] = scene.add.container().add([ui.pc, ui.pcCrack, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff, ui.pcBreak]);
     ui.gameScene[1] = scene.add.container();
+    ui.gameScene[2] = scene.add.container().add([ui.fishing, ui.fishingCastbar, ui.fishingEffect, ui.fishingFloat, ui.fishingGroup, ui.fishAction]);
+    ui.bridge = scene.add.container().setVisible(false);
     ui.bridges.forEach(function (bridge, index) {
-        ui.gameScene[1].add(bridge);
+        ui.bridge.add(bridge);
         bridge.on('pointerup', function () {
             selectBridge(index, bridge);
         });
@@ -393,7 +725,8 @@ function createUIObjects(scene) {
     ui.dialogBox = scene.add.rexNinePatch({
         x: display.centerW, y: display.height - 10,
         width: (display.width - 20) * 0.5, height: 180 * 0.5,
-        key: 'nineslice',
+        key: 'ui',
+        baseFrame: 'default',
         columns: [8, undefined, 8],
         rows: [8, undefined, 8],
     }).setOrigin(0.5, 1).setScale(2);
@@ -404,7 +737,8 @@ function createUIObjects(scene) {
     ui.taskBox = scene.add.rexNinePatch({
         x: display.centerW, y: 64,
         width: (display.width - 20) * 0.5, height: 32,
-        key: 'nineslice-task',
+        key: 'ui',
+        baseFrame: 'task',
         columns: [15, undefined, 15],
         rows: [0, undefined, 0],
     }).setOrigin(0.5, 1).setScale(2);
@@ -413,12 +747,13 @@ function createUIObjects(scene) {
     ui.rewardBox = scene.add.rexNinePatch({
         x: 0, y: 0,
         width: 120, height: 32,
-        key: 'nineslice',
+        key: 'ui',
+        baseFrame: 'default',
         columns: [8, undefined, 8],
         rows: [8, undefined, 8],
     }).setOrigin(0).setScale(2);
     ui.rewardMsg = scene.add.text(120, 32, '', fontConfig).setFontSize(16).setOrigin(0.5).setLineSpacing(4);
-    ui.rewardGroup = scene.add.container().setPosition(160 - 120, 320 - 40).setVisible(false);
+    ui.rewardGroup = scene.add.container().setPosition(display.centerW - 120, display.centerH - 40).setVisible(false);
     ui.rewardGroup.add([ui.rewardBox, ui.rewardMsg]);
 
     ui.skip.on('pointerup', function () {
@@ -430,7 +765,7 @@ function setTask(visible) {
     let pos;
     let ease;
     if (visible){
-        pos = 0;
+        pos = -8;
         ease = Phaser.Math.Easing.Quintic.Out;
         ui.task.text = line.task[status.chapterIdx][status.taskIdx];
         status.taskIdx++;
@@ -439,7 +774,6 @@ function setTask(visible) {
         ease = Phaser.Math.Easing.Quintic.In;
         pos = -64;
     }
-
     scene.tweens.add({
         targets: ui.taskGroup,
         y: pos,
@@ -451,19 +785,17 @@ function createParticles(scene) {
     // 파티클 생성
     let emitZone = new Phaser.Geom.Rectangle(-200, -600, 200, 1200);
     mainObject.particles = scene.add.particles('obj', 'particle');
-    let emitter = mainObject.particles.createEmitter({
+    mainObject.particles.createEmitter({
         x: 0,
         y: 0,
         speed: 80,
-        gravityX: 120,
+        gravityX: 320,
         gravityY: 120,
         lifespan: 6000,
-        quantity: 0.5,
         scale: 2,
         emitZone: { source: emitZone }
     });
     let titlezone = new Phaser.Geom.Rectangle(0, -60, display.width, 10);
-
     mainObject.TitleParticle = scene.add.particles('leaf');
     mainObject.TitleEmitter = mainObject.TitleParticle.createEmitter({
         frame: [ '0', '1', '2', '3'],
@@ -483,28 +815,44 @@ function createParticles(scene) {
 function createObjects(scene) {
     // 기타 오브젝트 생성
     object.list = [];
-    object.list[0] = scene.add.sprite(0, 336, 'obj', 'rock').setScale(2).setOrigin(0, 1).setVisible(false);
-    object.list[1] = scene.add.sprite(display.width - 80, 368, 'obj', 'rock').setScale(2).setOrigin(0, 1).setVisible(false);
-    object.list[2] = scene.add.sprite(96, 368, 'obj', 'pc').setScale(2).setOrigin(0, 1).setVisible(false);
+    object.list[0] = scene.add.sprite(242, 472, 'obj', 'rock0').setScale(2).setOrigin(0, 1).setVisible(false);
+    object.list[1] = scene.add.sprite(12, 580, 'obj', 'rock1').setScale(2).setOrigin(0, 1).setVisible(false);
+    object.list[2] = scene.add.sprite(234, 596 + 80, 'obj', 'rock2').setScale(2).setOrigin(0, 1).setVisible(false);
+    object.list[3] = scene.add.sprite(58 * 2, 143 * 2 + 92 * 2, 'pc').setScale(2).setOrigin(0, 1).play('pc').setVisible(false);
+    object.list[4] = scene.add.sprite(110, 506, 'keyboard', 'pc-console').setScale(2).setOrigin(0, 1).setVisible(false);
+
+    // 위치 맞추기용
+    object.sample = scene.add.sprite(0, 0, 'sample').setOrigin(0).setAlpha(0).setScale(2);
 
 }
 function setLayer(scene) {
     // TODO 레이어 및 그룹 오브젝트 생성
     mainObject.layer = scene.add.layer();
 
+    mainObject.bg = scene.add.container();
+    mainObject.bg.add([ui.bg, ui.smoke, ui.next, ui.bridge]);
+    for (let i = 0; i < maps.wallLayer.length; i++) {
+        mainObject.bg.add(maps.wallLayer[i]);
+    }
+
     mainObject.group = scene.add.container();
-    mainObject.group.add([mainObject.player, mainObject.dom, mainObject.engineer, mainObject.man]);
+    mainObject.group.add([mainObject.player, mainObject.dom, mainObject.engineer, mainObject.man, mainObject.fishman]);
     mainObject.group.add(object.list);
+    for (let i = 0; i < mainObject.sheeps.length; i++) {
+        mainObject.group.add(mainObject.sheeps[i]);
+    }
 
     ui.group = scene.add.container();
-    ui.group.add([ui.background, ui.mark, ui.next, ui.gameGroup, ui.dialogGroup, ui.rewardGroup, ui.taskGroup, ui.largeText, ui.white, ui.title, ui.dark, ui.skip]);
+    ui.group.add([ui.background, ui.mark, ui.gameGroup, ui.dialogGroup, ui.rewardGroup, ui.taskGroup, ui.largeText, ui.white, ui.title, ui.dark, ui.skip]);
 
     // 레이어 정렬
+    mainObject.layer.add(mainObject.bg);
     mainObject.layer.add(mainObject.group);
     mainObject.layer.add(mainObject.particles);
     mainObject.layer.add(ui.group);
     mainObject.layer.add(ui.effectGroup);
     mainObject.layer.add(mainObject.TitleParticle);
+    mainObject.layer.add(object.sample);
 }
 function setAnimations(scene) {
     // TODO 애니메이션 추가
@@ -525,6 +873,68 @@ function setAnimations(scene) {
         frames: scene.anims.generateFrameNumbers('bridge', { start: 0, end: 9, first: 0 }),
         frameRate: 24
     });
+    scene.anims.create({
+        key: 'float-water',
+        frames: scene.anims.generateFrameNumbers('float-water', { start: 0, end: 9, first: 0 }),
+        frameRate: 16
+    });
+    scene.anims.create({
+        key: 'float-water-wave',
+        frames: scene.anims.generateFrameNumbers('float-water', { start: 9, end: 18 }),
+        frameRate: 16
+    });
+    scene.anims.create({
+        key: 'fish-icon',
+        frames: scene.anims.generateFrameNumbers('fish-icon', { start: 0, end: 1 }),
+        frameRate: 8,
+        repeat: -1
+    });
+    // backgrounds
+    scene.anims.create({
+        key: 'bg0',
+        frames: scene.anims.generateFrameNumbers('bg', { start: 0, end: 0 }),
+        frameRate: 1,
+    });
+    scene.anims.create({
+        key: 'bg1',
+        frames: scene.anims.generateFrameNumbers('bg', { start: 1, end: 1 }),
+        frameRate: 1,
+    });
+    scene.anims.create({
+        key: 'bg2',
+        frames: scene.anims.generateFrameNumbers('bg', { start: 2, end: 3 }),
+        repeat: -1,
+        frameRate: 2,
+    });
+    scene.anims.create({
+        key: 'bg3',
+        frames: scene.anims.generateFrameNumbers('bg', { start: 4, end: 4 }),
+        frameRate: 1,
+    });
+    scene.anims.create({
+        key: 'pc',
+        frames: scene.anims.generateFrameNumbers('pc', { start: 0, end: 2 }),
+        frameRate: 8,
+        repeat: -1
+    });
+    scene.anims.create({
+        key: 'smoke',
+        repeat: -1,
+        frameRate: 4,
+        frames: scene.anims.generateFrameNames('ui', {
+            prefix: 'smoke-',
+            end: 2
+        })
+    });
+    scene.anims.create({
+        key: 'next',
+        repeat: -1,
+        frameRate: 2,
+        frames: scene.anims.generateFrameNames('ui', {
+            prefix: 'next-',
+            end: 1
+        })
+    });
 }
 function setLines(scene) {
     // TODO 텍스트 데이터 생성 및 정리
@@ -533,10 +943,10 @@ function setLines(scene) {
     line.task = jsonText.task;
     line.opening = jsonText.opening;
     line.story = jsonText.story;
-    console.log(line);
 }
 
 // TODO 동작 메서드
+const lerp = (x, y, a) => x * (1 - a) + y * a;
 function Move(character, target, speed) {
     game.scene.scenes[0].physics.moveToObject(character, target, speed);
 }
@@ -545,8 +955,10 @@ function moveCharacter(character) {
     if(character === 'engineer') speed = 80;
     moveTargets[character].x = path.get(character)[mainConfig.pathCount[character]].x;
     moveTargets[character].y = path.get(character)[mainConfig.pathCount[character]].y;
+    let next = path.get(character)[mainConfig.pathCount[character] + 1]?.x;
     if(mainObject[character].anims.currentAnim.key !== character + '-run') mainObject[character].play(character + '-run');
     mainObject[character].setFlipX(mainObject[character].x - moveTargets[character].x > 0);
+    if(next !== undefined) mainObject[character].setFlipX(mainObject[character].x - next > 0);
     Move(mainObject[character], moveTargets[character], speed);
 }
 function moveToPoint(character, x, y, withPath){
@@ -558,6 +970,106 @@ function moveToPoint(character, x, y, withPath){
     path.set(character, newPath);
     if(path.get(character) === null || path.get(character).length < 1) return;
     moveCharacter(character);
+}
+function sheepStanby(sheep) {
+    sheep.setFlipX(true);
+    sheep.play('sheep-run');
+    Move(sheep, mainConfig.bridgePos.start, 100);
+}
+function sheepTalk(idx, sheep) {
+    clearTimeout(mainConfig.sheepBlinkTimer[idx]);
+    mainConfig.sheepBlinkTimer[idx] = setTimeout(function () {
+        if(sheep.anims.currentAnim.key === 'sheep-stand') sheep.play('sheep-talk');
+    }, 1600 + Math.round(Math.random() * 3200));
+}
+function jumpTo(jumper, target, action) {
+    if(jumper === undefined) return;
+    mainConfig.bridgeJumpingNow = true;
+    let scene = game.scene.scenes[0];
+    let a = jumper;
+    let b = target;
+    let path = [];
+    path[0] = {x: a.x, y: a.y};
+    path[1] = {x: lerp(a.x, b.x, 0.5) , y: lerp(a.y, b.y - 60, 0.5)}
+    path[2] = {x: b.x, y: b.y + 20}
+    a.setFlipX(a.x > b.x);
+    if(a === mainObject.player){
+        if(a.anims.currentAnim.key !== 'player-jump') a.play('player-jump');
+    }
+    else if(a === mainObject.dom){
+        if(a.anims.currentAnim.key !== 'dom-jump') a.play('dom-jump');
+    }
+    else {
+        if(a.anims.currentAnim.key !== 'sheep-jump') a.play('sheep-jump');
+        let idx = mainObject.sheeps.findIndex((obj) => a === obj);
+        sheepTalk(idx, a);
+    }
+    scene.tweens.add({
+        targets: a,
+        x: path[2].x,
+        duration: 600,
+        ease: Phaser.Math.Easing.Linear
+    });
+    scene.tweens.add({
+        targets: a,
+        y: path[1].y,
+        duration: 300,
+        ease: Phaser.Math.Easing.Quadratic.Out,
+        onComplete: function () {
+            scene.tweens.add({
+                targets: a,
+                y: path[2].y,
+                duration: 300,
+                ease: Phaser.Math.Easing.Quadratic.In,
+                onComplete: function () {
+                    mainConfig.bridgeJumpingNow = false;
+                    action();
+                }
+            });
+        }
+    });
+}
+function fishingCastFloat(power) {
+    const scene = game.scene.scenes[0];
+    for (let i = 0; i < mainConfig.fishFloatTween.length; i++) {
+        mainConfig.fishFloatTween[i].stop();
+    }
+    ui.fishingFloat.setVisible(true);
+    ui.fishingFloat.setPosition(display.width, display.height);
+    let target = {x: display.centerW + getRandomInt(80), y: 420 - Math.round(power) + getRandomInt(20)};
+    const path = [];
+    path[0] = {x: ui.fishingFloat.x, y: ui.fishingFloat.y};
+    path[1] = {x: lerp(ui.fishingFloat.x, target.x, 0.85) , y: lerp(ui.fishingFloat.y - 160 - Math.round(power * 0.5), target.y - 160 - Math.round(power * 0.5), 0.5)};
+    path[2] = {x: target.x, y: target.y};
+    let speed = 1600 + Math.round(power)
+    mainConfig.fishFloatTween[0] = scene.tweens.add({
+        targets: ui.fishingFloat,
+        x: path[2].x,
+        duration: speed,
+        ease: Phaser.Math.Easing.Linear
+    });
+    mainConfig.fishFloatTween[1] = scene.tweens.add({
+        targets: ui.fishingFloat,
+        y: path[1].y,
+        duration: speed * 0.5,
+        ease: Phaser.Math.Easing.Quadratic.Out,
+        onComplete: function () {
+            mainConfig.fishFloatTween[2] = scene.tweens.add({
+                targets: ui.fishingFloat,
+                y: path[2].y,
+                duration: speed * 0.5,
+                ease: Phaser.Math.Easing.Quartic.In,
+                onComplete: function () {
+                    ui.floatWater.setPosition(target.x, target.y);
+                    ui.floatWater.setVisible(true);
+                    ui.floatWater.play('float-water');
+                    // 찌 물에 떨어짐
+                    // 낚시 시작
+                    startBite();
+                }
+            });
+        }
+    });
 }
 function path_log() {
     debug.graphics.clear();
@@ -575,6 +1087,9 @@ function path_log() {
 }
 function RandomPlusMinus() {
     return (Math.random() > 0.5) ? 1 : -1;
+}
+const getRandomInt = function (max) {
+    return RandomPlusMinus() * Math.round(Math.random() * max);
 }
 function RandomizePos(obj, x, y, min, max) {
     obj.x = x + min + Math.random() * max * RandomPlusMinus();
@@ -678,6 +1193,7 @@ function keyboardAction(key) {
     }
 }
 function pcShutDown(way) {
+    // PC 미니게임 종료 후 결과에 따라 대사 변경
     const newline = new Map();
     newline.set('1234', "[폰 왈도 노이만 3세]\n어떻게 비밀번호를 알아냈지?!\n천재가 분명해! 자네..")
         .set('0000', "[폰 왈도 노이만 3세]\n초기화 패스워드 0000이라..자네..\n나랑 일해볼 생각 없나..?")
@@ -725,6 +1241,10 @@ function pcShutDown(way) {
     });
 }
 function setReward(bool, count) {
+    // 씨앗을 받았다 메세지 UI 출력
+    // bool: 켜기 끄기
+    // count: 씨앗 갯수
+
     if(bool){
         setTimeout(() => ui.skip.setVisible(true), 400);
         ui.rewardGroup.setVisible(true);
@@ -734,11 +1254,98 @@ function setReward(bool, count) {
     else ui.rewardGroup.setVisible(false);
 }
 function setGameScenes() {
+    // 챕터에 따라 미니게임 씬 정렬
     if(status.chapterIdx < 1) return;
     for (let i = 0; i < ui.gameScene.length; i++) {
         ui.gameScene[i].setVisible(false);
     }
+    ui.gameGroup.y = 840;
     ui.gameScene[status.chapterIdx - 1].setVisible(true);
+}
+function fishingFinish(success) {
+    // 낚시 완료
+    // success: 성공 여부
+    console.log('fishing ' , (success) ? 'success' : 'failed');
+    let scene = game.scene.scenes[0];
+
+    mainConfig.fishingNow = false;
+    mainConfig.fishWait = false;
+    ui.fishAction.disableInteractive();
+    ui.fishIcon.body.setGravityY(0);
+    ui.fishIcon.body.setVelocity(0, 0);
+    ui.fishingBar.body.setGravityY(0);
+    ui.fishingBar.body.setVelocity(0, 0);
+    ui.fishingBar.setPosition(display.centerW, display.centerH);
+    ui.fishIcon.y = display.centerH - 80;
+    setVisibleObjects(false, [ui.fishingBar, ui.fishingGroup]);
+    if(success){
+        setTask(false);
+        ui.gameGroup.setVisible(true);
+        scene.tweens.add({
+            targets: ui.gameGroup,
+            y: -800,
+            duration: 2000,
+            ease: Phaser.Math.Easing.Quintic.In,
+        });
+    }
+    else {
+        setTimeout(function () {
+            ui.fishingFloat.setVisible(false);
+            ui.fishAction.setInteractive();
+        }, 200);
+    }
+}
+function startFishing() {
+    console.log('start fishing');
+    setVisibleObjects(true, [ui.fishingBar, ui.fishingGroup]);
+    ui.task.text = '낚싯바늘 영역 안에 위치시키자';
+    createFloatWave(ui.fishingFloat);
+    ui.fishingBar.body.setGravityY(800);
+    fishMove();
+    function fishMove() {
+        ui.fishIcon.body.setGravityY(getRandomInt(400));
+        setTimeout(function () {
+            if(!mainConfig.fishingNow) return;
+            fishMove();
+        }, 200);
+    }
+}
+function startBite() {
+    clearTimeout(mainConfig.fishingFailTimer);
+    ui.task.text = '물고기가 물때까지 기다리자';
+    ui.fishingFloat.setTexture('ui', 'float-down').setOrigin(0.5);
+    mainConfig.fishingRodOn = true;
+    //let waitFish = 2400 + Math.round(Math.random() * 8000);
+    let waitFish = 200 + Math.round(Math.random() * 800);
+    let waitFail = 2400 + Math.round(Math.random() * 2400);
+    // 물고기 대기
+    mainConfig.fishingTimer = setTimeout(function () {
+        mainConfig.fishWait = true;
+        // 입질 시작
+        ui.task.text = '한번 더 눌러서 낚시를 시작하자';
+        createFloatWave(ui.fishingFloat);
+        // 무반응할 경우 낚시 실패
+        mainConfig.fishingFailTimer = setTimeout(function () {
+            mainConfig.fishWait = false;
+            startBite();
+        }, waitFail);
+    }, waitFish);
+}
+function createFloatWave(target) {
+    // 낚시찌 위치에 물결 재생
+    let wave =  ui.floatWaterWave.get();
+    if (!wave) return;
+    ui.fishingEffect.add(wave);
+    wave.setScale(2);
+    wave.setPosition(target.x, target.y);
+    wave.play('float-water-wave');
+    wave.on('animationcomplete', function () {
+        wave.destroy();
+        if(!mainConfig.fishWait) return;
+        setTimeout(function () {
+            createFloatWave(target);
+        }, 800);
+    });
 }
 function createParts(x, y, vx, vy) {
     // pc 부수기
@@ -771,31 +1378,209 @@ function createParts(x, y, vx, vy) {
 
 }
 function selectBridge(index, bridge) {
+    for (let i = 0; i < mainObject.sheeps.length; i++) {
+        if(mainObject.sheeps[i].body.speed > 0) return;
+    }
+    if(mainConfig.bridgeJumpingNow) return;
+    let livingSheep = mainObject.sheeps[0];
+    let nextSheep = mainObject.sheeps[1];
     if(Math.floor(index / 2) !== mainConfig.bridgeSelection) return;
+
     if(index === mainConfig.bridgeAnswer[mainConfig.bridgeSelection]){
         // 생존
-        console.log('success');
-        ui.bridges[mainConfig.bridgeFail[mainConfig.bridgeSelection]].play('bridge');
+        jumpTo(livingSheep, bridge, function () {
+            ui.bridges[mainConfig.bridgeFail[mainConfig.bridgeSelection]].play('bridge');
+            livingSheep.play('sheep-stand');
+            nextSheep = mainObject.sheeps[mainConfig.bridgeSelection - mainConfig.livingSheep + 1];
+            if(nextSheep !== undefined) {
+                if(nextSheep.y < ui.bridges[0].y) sheepStanby(nextSheep);
+            }
+            if(mainConfig.livingSheep > 0) {
+                mainConfig.sheepJump = function () {
+                    let followCount = 0;
+                    followUp(nextSheep);
+                    function followUp(sheep) {
+                        jumpTo(sheep, ui.bridges[mainConfig.bridgeAnswer[followCount]], function () {
+                            sheep.play('sheep-stand');
+                            followCount++;
+                            if (followCount === mainConfig.livingSheep) return;
+                            followUp(sheep);
+                        });
+                        nextSheep = mainObject.sheeps[mainConfig.bridgeSelection - mainConfig.livingSheep + 1];
+                        if(nextSheep !== undefined) {
+                            sheepStanby(nextSheep);
+                            mainConfig.sheepJump = function () {
+                                jumpTo(nextSheep, ui.bridges[mainConfig.bridgeAnswer[0]], function () {
+                                    nextSheep.play('sheep-stand');
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            for (let i = 0; i < mainConfig.bridgeSelection; i++) {
+                jumpTo(mainObject.sheeps[i + 1], ui.bridges[mainConfig.bridgeAnswer[mainConfig.bridgeSelection - 1 - i]], function () {
+                    mainObject.sheeps[i + 1].play('sheep-stand');
+                });
+            }
+            mainConfig.bridgeSelection++;
+            finishJump(true);
+        })
     }
     else {
-        console.log('failed');
-        bridge.play('bridge');
+        // 실패
+        jumpTo(livingSheep, bridge, function () {
+            // livingSheep 점프 후 실패 후 제거
+            ui.bridges[mainConfig.bridgeFail[mainConfig.bridgeSelection]].play('bridge');
+            mainConfig.livingSheep++;
+            livingSheep.setGravityX(-600);
+            livingSheep.setVelocity(80, 80);
+            livingSheep.play('sheep-dead');
+            livingSheep.setFlipX(false);
+            mainConfig.deadSheep.push(livingSheep);
+            mainObject.sheeps.shift();
+            // 남은 양 점프
+            nextSheep = mainObject.sheeps[mainConfig.bridgeSelection - mainConfig.livingSheep + 1];
+            if(nextSheep !== undefined) {
+                if(nextSheep.y < ui.bridges[0].y) sheepStanby(nextSheep);
+                mainConfig.sheepJump = function () {
+                    let followCount = 0;
+                    followUp(nextSheep);
+                    function followUp(sheep) {
+                        jumpTo(sheep, ui.bridges[mainConfig.bridgeAnswer[followCount]], function () {
+                            sheep.play('sheep-stand');
+                            followCount++;
+                            if(followCount === mainConfig.livingSheep) return;
+                            followUp(sheep);
+                        });
+                        nextSheep = mainObject.sheeps[mainConfig.bridgeSelection - mainConfig.livingSheep + 1];
+                        if(nextSheep !== undefined) {
+                            if(nextSheep.y < ui.bridges[0].y) sheepStanby(nextSheep);
+                            mainConfig.sheepJump = function () {
+                                jumpTo(nextSheep, ui.bridges[mainConfig.bridgeAnswer[0]], function () {
+                                    nextSheep.play('sheep-stand');
+                                });
+                                let toNext = mainObject.sheeps[mainConfig.bridgeSelection - mainConfig.livingSheep + 2];
+                                if(toNext !== undefined){
+                                    sheepStanby(toNext);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            for (let i = 0; i < mainConfig.bridgeSelection; i++) {
+                jumpTo(mainObject.sheeps[i], ui.bridges[mainConfig.bridgeAnswer[mainConfig.bridgeSelection - 1 - i]], function () {
+                    mainObject.sheeps[i].play('sheep-stand');
+                    jumpTo(mainObject.sheeps[i], ui.bridges[mainConfig.bridgeAnswer[mainConfig.bridgeSelection - 1 - i]], function () {
+                        mainObject.sheeps[i].play('sheep-stand');
+                    })
+                })
+            }
+            mainConfig.bridgeSelection++;
+            finishJump(false);
+        });
     }
+    function finishJump(success) {
+        let count = (success) ? 4 : 3;
+        if(mainConfig.bridgeSelection === 5){
+            // 퀘스트 완료
+            let left = 0;
+            f();
+            function f() {
+                for (let i = 0; i < mainObject.sheeps.length; i++) {
+                    let target = ui.bridges[mainConfig.bridgeAnswer[count - i + left]];
+                    if(target === undefined) {
+                        target = mainConfig.bridgePos.end;
+                    }
+                    if(success){
+                        if(i === 0) target = mainConfig.bridgePos.end;
+                    }
+                    if(mainObject.sheeps[i].y < mainConfig.bridgePos.end.y){
+                        jumpTo(mainObject.sheeps[i], target, function () {
+                            mainObject.sheeps[i].play('sheep-run');
+                            let lastPos = mainConfig.sheepEndPos[i];
+                            mainConfig.sheepLast[i] = lastPos;
+                            Move(mainObject.sheeps[i], lastPos, 100);
+                            mainObject.sheeps[i].setFlipX(mainObject.sheeps[i].x > lastPos.x);
+                            if(i === mainObject.sheeps.length - 1){
+                                if(left < mainObject.sheeps.length + 1){
+                                    left++;
+                                    f();
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            if(!success && mainConfig.deadSheep.length > 4){
+                setTimeout(function () {
+                    sheepFinish();
+                }, 1000);
+            }
+        }
+    }
+
+    // 인터렉션 설정 및 퀘스트 재설정
     ui.bridges[mainConfig.bridgeAnswer[mainConfig.bridgeSelection]].disableInteractive();
     ui.bridges[mainConfig.bridgeFail[mainConfig.bridgeSelection]].disableInteractive();
-    mainConfig.bridgeSelection++;
     const number = {
+        0: '첫 번째' ,
         1: '두 번째' ,
         2: '세 번째' ,
         3: '네 번째' ,
-        4: '마지막 '
     }
-    if(mainConfig.bridgeSelection < 5){
-        ui.task.text = number[mainConfig.bridgeSelection] + " 다리를 선택하자";
-    }
-
+    let korNum = number[mainConfig.bridgeSelection + 1];
+    if(korNum === undefined) korNum = '마지막';
+    ui.task.text = korNum + " 다리를 선택하자";
 }
+function sheepFinish() {
+    for (let i = 0; i < mainObject.sheeps.length; i++) {
+        sheepTalk(i, mainObject.sheeps[i]);
+    }
+    setTask(false);
+    mainConfig.clear[1] = true;
+    let dead = mainConfig.deadSheep.length;
+    const newLine = {13: new Map(), 14: new Map(), 15: new Map(), 16: null, 17: null};
+    newLine[13].set(5, "[양치기 소년]\n........");
+    newLine[13].set(4, "[양치기 소년]\n아아.. 단 한마리만 건넜어..");
+    newLine[13].set(3, "[양치기 소년]\n하하.. 내 양의 반 이상이...");
+    newLine[13].set(2, "[양치기 소년]\n음.. 그래도 양들이 세마리나\n강을 건넜네..");
+    newLine[13].set(1, "[양치기 소년]\n오호.. 너 꽤나 잘 맞추는데?");
+    newLine[13].set(0, "[양치기 소년]\n대단해..전부 맞췄어!!");
 
+    newLine[14].set(5, "[아무 말도 하지 않는다]");
+    newLine[14].set(4, "[먼 산을 바라본다]");
+    newLine[14].set(3, "[미안한 표정으로 쳐다본다]");
+    newLine[14].set(2, "[양치기를 쳐다본다]");
+    newLine[14].set(1, "[미소를 짓는다]");
+    newLine[14].set(0, "[뿌듯한 얼굴로 양치기를 본다]");
+
+    newLine[15].set(5, "[양치기 소년]\n어쩔 수 없지.. 애초에 내가 선택을\n너에게 부탁했잖아..");
+    newLine[15].set(4, "[양치기 소년]\n아니 괘..괜찮아..\n한 마리라도 남았으니 다행이지..");
+    newLine[15].set(3, "[양치기 소년]\n어쩔 수 없지 뭐..\n양을 더 많이 빠트린 적도 있으니까..");
+    newLine[15].set(2, "[양치기 소년]\n이 정도면 나보단 낫네..\n어차피 확률은 반반이였잖아 그치?");
+    newLine[15].set(1, "[양치기 소년]\n뭔가 구별할 수 있는 방법이\n있는거야? 내 눈엔 똑같은데..");
+    newLine[15].set(0, "[양치기 소년]\n진짜 어떻게 한 거야?!\n나한테도 방법 좀 알려달라고..");
+
+    newLine[16] = "[양치기 소년]\n떠밀려간 양은 너무 걱정하지마.\n강 하류는 얕아서 아마 괜찮을거야."
+    if(dead === 0) newLine[16] = "[양치기 소년]자 이제 저 징검다리를 지나서\n건너가면 돼."
+
+    newLine[17] = "[양치기 소년]\n내가 데리러 갈테니 넌 마저\n건너가도록 하라구."
+    if(dead === 0) newLine[17] = "[양치기 소년]\n난 이쪽에 남은 짐을 챙겨서 갈테니\n걱정말라구."
+
+    line.story[status.chapterIdx][13] = newLine[13].get(dead);
+    line.story[status.chapterIdx][14] = newLine[14].get(dead);
+    line.story[status.chapterIdx][15] = newLine[15].get(dead);
+    line.story[status.chapterIdx][16] = newLine[16];
+    line.story[status.chapterIdx][17] = newLine[17];
+
+    mainConfig.reward[1] = 6-dead;
+
+    ui.skip.setVisible(true);
+    ui.dialogGroup.setVisible(true);
+    dialog();
+}
 // TODO 이벤트 메서드
 function skip() {
     if(status.scene === 'title'){
@@ -826,6 +1611,7 @@ function skip() {
             duration: 1200,
             ease: Phaser.Math.Easing.Quintic.In,
             onComplete: function () {
+                ui.title.setVisible(false);
                 ui.largeText.setVisible(true);
                 ui.largeText.text = line.opening[status.index];
                 shakeObject(ui.largeText, 20, 20, 240);
@@ -840,6 +1626,7 @@ function skip() {
             chapterTitle(mainConfig.debugMode);
         }
         else {
+            if(ui.title.visible) return;
             ui.largeText.text = line.opening[status.index];
             shakeObject(ui.largeText, 20, 20, 240);
             status.index++;
@@ -866,6 +1653,7 @@ function dialog() {
         typewriteText(ui.dialog, line.story[status.chapterIdx][status.index], 60);
     }
 }
+// TODO 인덱스 메서드
 function eventByIndex(){
     let chapter = status.chapterIdx;
     let index = status.index;
@@ -902,7 +1690,7 @@ function eventByIndex(){
         if(index === 12){
             setTask(true);
             setTimeout(() => mainConfig.playerMovable = true, 20);
-            moveToPoint('dom', display.centerW, display.centerH + 80);
+            moveToPoint('dom', display.centerW, display.centerH + 120);
             mainConfig.moveFinishedEvent.player = function () {
                 let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
                     col.active = false;
@@ -922,25 +1710,10 @@ function eventByIndex(){
             setTask(true);
             setTimeout(() => mainConfig.playerMovable = true, 0);
             setTimeout(() => mainConfig.domFollow = true, 0);
-            let col = scene.physics.add.overlap(mainObject.player, ui.next, function () {
-                setTask(false);
-                console.log('to next stage');
-                status.chapterIdx++;
-                col.active = false;
-                mainConfig.domFollow = false;
-                ui.dark.setVisible(true).setAlpha(0);
-                moveToPoint('player', display.centerW, display.height + 180, false);
-                moveToPoint('dom', display.centerW, display.height + 180, false);
-                scene.tweens.add({
-                    targets: ui.dark,
-                    alpha: 1,
-                    duration: 2000,
-                    onComplete: () => chapterTitle(mainConfig.debugMode)
-                });
-            }, null, this);
+            finishChapter({x: display.centerW, y: display.height + 180});
         }
     }
-    if(chapter === 1) {
+    else if(chapter === 1) {
         if (index === 3) {
             setTask(true);
             moveEnable();
@@ -951,7 +1724,7 @@ function eventByIndex(){
                 mainConfig.domFollow = false;
                 mainConfig.lookAt.player = mainObject.engineer;
                 mainConfig.lookAt.engineer = mainObject.player;
-                moveToPoint('player', mainObject.engineer.x + 60, mainObject.engineer.y, true);
+                moveToPoint('player', mainObject.engineer.x + 60, mainObject.engineer.y + 20, true);
                 moveToPoint('dom', mainObject.engineer.x - 60, mainObject.engineer.y, true);
                 if(!ui.dialogGroup.visible) {
                     ui.skip.setVisible(true);
@@ -988,31 +1761,36 @@ function eventByIndex(){
         else if (index === 19){
             // 다음 스테이지로
             setTask(true);
-            moveToPoint('engineer', 70, display.centerH + 40, true);
-            mainConfig.moveFinishedEvent.engineer = function () {
-                mainObject.engineer.play('engineer-type');
-                mainObject.engineer.setFlipX(false);
-            };
+            repeat();
+            function repeat() {
+                if(status.chapterIdx !== 1) {
+                    return;
+                }
+                moveToPoint('engineer', 288, 466, true);
+                mainConfig.moveFinishedEvent.engineer = function () {
+                    mainObject.engineer.play('engineer-type');
+                    mainObject.engineer.setFlipX(true);
+                    let n = setTimeout(function () {
+                        if(status.chapterIdx !== 1) {
+                            clearTimeout(n);
+                            return;
+                        }
+                        moveToPoint('engineer', 104, 506, true);
+                        mainConfig.moveFinishedEvent.engineer = function () {
+                            mainObject.engineer.play('engineer-type');
+                            mainObject.engineer.setFlipX(false);
+                            setTimeout(function () {
+                                repeat();
+                            }, 2400 + Math.round(Math.random() * 8000));
+                        };
+                    }, 2400 + Math.round(Math.random() * 8000));
+                };
+            }
             moveEnable();
-            let col = scene.physics.add.overlap(mainObject.player, ui.next, function () {
-                setTask(false);
-                console.log('to next stage');
-                status.chapterIdx++;
-                col.active = false;
-                mainConfig.domFollow = false;
-                ui.dark.setVisible(true).setAlpha(0);
-                moveToPoint('player', display.centerW, display.height + 180, false);
-                moveToPoint('dom', display.centerW, display.height + 180, false);
-                scene.tweens.add({
-                    targets: ui.dark,
-                    alpha: 1,
-                    duration: 2000,
-                    onComplete: () => chapterTitle(mainConfig.debugMode)
-                });
-            });
+            finishChapter({x: display.centerW, y: display.height + 180});
         }
     }
-    if(chapter === 2) {
+    else if(chapter === 2) {
         if (index === 4) {
             setTask(true);
             moveEnable();
@@ -1024,8 +1802,8 @@ function eventByIndex(){
                 mainConfig.lookAt.player = mainObject.man;
                 mainConfig.lookAt.man = mainObject.player;
                 mainConfig.lookAt.dom = mainObject.man;
-                moveToPoint('player', mainObject.man.x + 44, mainObject.man.y + 32, true);
-                moveToPoint('dom', mainObject.man.x + 44, mainObject.man.y - 32, true);
+                moveToPoint('player', mainObject.man.x + 48, mainObject.man.y, true);
+                moveToPoint('dom', mainObject.man.x + 48, mainObject.man.y - 40, true);
                 if(!ui.dialogGroup.visible) {
                     ui.skip.setVisible(true);
                     ui.dialogGroup.setVisible(true);
@@ -1034,7 +1812,14 @@ function eventByIndex(){
                 mainObject.man.play('man-talk');
             }, null, this);
         }
-        else if (index === 11) {
+        else if (index === 6){
+            mainObject.man.play('man-stand');
+        }
+        else if (index === 7){
+            mainObject.man.play('man-talk');
+        }
+        else if (index === 12) {
+            sheepStanby(mainObject.sheeps[0]);
             mainObject.man.play('man-stand');
             mainObject.man.setFlipX(true);
             ui.bridges.forEach(function (bridge) {
@@ -1042,7 +1827,127 @@ function eventByIndex(){
             });
             setTask(true);
         }
+        else if (index === 13){
+            mainObject.man.setFlipX(false);
+            mainObject.man.play('man-talk');
+        }
+        else if (index === 14){
+            mainObject.man.play('man-stand');
+        }
+        else if (index === 15){
+            mainObject.man.play('man-talk');
+        }
+        else if (index === 18){
+            mainObject.man.play('man-stand');
+            setTimeout(function () {
+                setReward(true, mainConfig.reward[1]);
+            }, 400);
+        }
+        else if (index === 19){
+            mainObject.man.play('man-talk');
+        }
+        else if (index === 20){
+            mainObject.man.setFlipX(true);
+            mainObject.man.play('man-stand');
+            mainConfig.lookAt.player = null;
+            mainConfig.lookAt.dom = null;
+            moveToPoint('player', mainConfig.bridgePos.start.x, mainConfig.bridgePos.start.y, true);
+            moveToPoint('dom', mainConfig.bridgePos.start.x + 40, mainConfig.bridgePos.start.y, true);
+            mainConfig.moveFinishedEvent.player = function () {
+                let jumpCount = 0;
+                let jumpCountDom = 0;
+                playerJump();
+                function playerJump() {
+                    if(jumpCount === 1) DomJump();
+                    jumpTo(mainObject.player, ui.bridges[mainConfig.bridgeAnswer[jumpCount]], function () {
+                        if (jumpCount < 4) {
+                            mainObject.player.play('player-stand');
+                            jumpCount++;
+                            playerJump();
+                        }
+                        else {
+                            // 주인공 점프
+                            jumpTo(mainObject.player, mainConfig.bridgePos.end, function (){
+                                mainConfig.playerMovable = true;
+                                mainObject.player.play('player-stand');
+                                setTask(true);
+                                finishChapter({x: display.centerW, y: display.height + 180});
+                            })
+                        }
+                    })
+                }
+                function DomJump() {
+                    jumpTo(mainObject.dom, ui.bridges[mainConfig.bridgeAnswer[jumpCountDom]], function () {
+                        if (jumpCountDom < 4) {
+                            mainObject.dom.play('dom-stand');
+                            jumpCountDom++;
+                            DomJump();
+                        }
+                        else {
+                            jumpTo(mainObject.dom, {x: mainConfig.bridgePos.end.x -40, y: mainConfig.bridgePos.end.y}, function (){
+                                mainConfig.domFollow = true;
+                                mainObject.dom.play('dom-stand');
+                            })
+                        }
+                    })
+                }
+            }
+        }
     }
+    else if(chapter === 3) {
+        if (index === 2) {
+            setTask(true);
+            moveEnable();
+            let col = scene.physics.add.overlap(mainObject.player, ui.fishmanPlace, function () {
+                col.active = false;
+                setTask(false);
+                mainConfig.playerMovable = false;
+                mainConfig.domFollow = false;
+                mainConfig.lookAt.player = mainObject.fishman;
+                mainConfig.lookAt.dom = mainObject.fishman;
+                moveToPoint('player', mainObject.fishman.x - 20, mainObject.fishman.y + 60, false);
+                moveToPoint('dom', mainObject.fishman.x - 40, mainObject.fishman.y + 80, false);
+                if(!ui.dialogGroup.visible) {
+                    ui.skip.setVisible(true);
+                    ui.dialogGroup.setVisible(true);
+                }
+                dialog();
+                mainObject.fishman.play('fishman-talk');
+            }, null, this);
+        }
+        else if(index === 5){
+            setTask(true);
+            ui.fishAction.setInteractive();
+            ui.gameGroup.y = 600;
+            ui.gameGroup.setVisible(true);
+            scene.tweens.add({
+                targets: ui.gameGroup,
+                y: 0,
+                duration: 2000,
+                ease: Phaser.Math.Easing.Quintic.Out,
+            });
+        }
+    }
+}
+function finishChapter(pos) {
+    let scene = game.scene.scenes[0];
+    ui.next.setVisible(true);
+    let col = scene.physics.add.overlap(mainObject.player, ui.next, function () {
+        setTask(false);
+        console.log('to next stage');
+        status.chapterIdx++;
+        col.active = false;
+        mainConfig.domFollow = false;
+        ui.dark.setVisible(true).setAlpha(0);
+        moveToPoint('player', pos.x, pos.y, false);
+        moveToPoint('dom', pos.x, pos.y, false);
+        scene.tweens.add({
+            targets: ui.dark,
+            alpha: 1,
+            duration: 2000,
+            onComplete: () => chapterTitle(mainConfig.debugMode)
+        });
+    });
 }
 function moveEnable() {
     setTimeout(function () {
@@ -1081,7 +1986,13 @@ function moveFinished(character) {
         }
     }
 }
-
+function setBackground(idx) {
+    ui.bg.play('bg' + idx);
+    for (let i = 0; i < maps.wallLayer.length; i++) {
+        maps.wallLayer[i].setVisible(false);
+    }
+    maps.wallLayer[idx].setVisible(true);
+}
 // TODO 씬 제어
 function chapterTitle(skip) {
     ui.background.setVisible(true);
@@ -1089,7 +2000,6 @@ function chapterTitle(skip) {
     if(skip) {
         // 디버그 씬 스킵
         if(mainConfig.debugMode) {
-            status.chapterIdx = mainConfig.debugModeChapter;
             if(mainConfig.debugModeChapter !== 0){
                 mainObject.dom.setVisible(true);
                 mainObject.particles.setVisible(false);
@@ -1112,6 +2022,7 @@ function chapterTitle(skip) {
     });
 
     function chapterStart(chapterIdx) {
+        ui.next.setVisible(false);
         ui.background.setVisible(false);
         ui.dark.setVisible(true);
         let scene = game.scene.scenes[0];
@@ -1128,8 +2039,9 @@ function chapterTitle(skip) {
             onComplete: () => ui.dark.setVisible(false)
         });
         ui.largeText.setVisible(false);
+        setBackground(chapterIdx);
         if(chapterIdx === 0){
-            setVisibleObjects(true, [maps.wallLayer[0], object.list[0], object.list[1]]);
+            setVisibleObjects(true, [object.list[0], object.list[1], object.list[2], ui.smoke]);
             zoomOut(mainConfig.debugMode);
             function zoomOut(on) {
                 if(on){
@@ -1156,18 +2068,18 @@ function chapterTitle(skip) {
         else if(chapterIdx === 1){
             ui.skip.setVisible(false);
             maps.navMesh.destroy();
-            maps.wallLayer[0].setVisible(false);
-            maps.wallLayer[1].setVisible(true);
             maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[1], 12.5);
-            setVisibleObjects(false, [object.list[0], object.list[1]]);
-            object.list[2].setVisible(true);
+            setVisibleObjects(false, [object.list[0], object.list[1], object.list[2], ui.smoke]);
+            setVisibleObjects(true, [object.list[3], object.list[4]]);
             mainObject.particles.setVisible(false);
             mainObject.engineer.setVisible(true);
-            mainObject.player.x = mainObject.dom.x = display.centerW;
-            mainObject.player.y = mainObject.dom.y = -80;
+            mainObject.player.x = -16;
+            mainObject.player.y = 200;
+            mainObject.dom.x = -64;
+            mainObject.dom.y = 220;
 
-            moveToPoint('player', display.centerW + 30, 100, false);
-            moveToPoint('dom', display.centerW - 30, 100, false);
+            moveToPoint('player', display.centerW + 30, 200, false);
+            moveToPoint('dom', display.centerW - 30, 200, false);
             mainConfig.moveFinishedEvent.player = function () {
                 mainConfig.lookAt.player = mainObject.dom;
                 mainConfig.lookAt.dom = mainObject.player;
@@ -1183,16 +2095,56 @@ function chapterTitle(skip) {
         }
         else if(chapterIdx === 2){
             maps.navMesh.destroy();
-            ui.gameBackground.setVisible(false);
-            ui.gameGroup.setVisible(true);
-            ui.gameGroup.y = 0;
-            setVisibleObjects(false, [ui.skip, object.list[2], maps.wallLayer[1], mainObject.engineer]);
-            setVisibleObjects(true, [maps.wallLayer[2], mainObject.man]);
+            setVisibleObjects(false, [ui.skip, mainObject.engineer, object.list[3], object.list[4]]);
+            setVisibleObjects(true, [ui.bridge, mainObject.man]);
+            for (let i = 0; i < mainObject.sheeps.length; i++) {
+                mainObject.sheeps[i].setVisible(true);
+            }
             maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[2], 12.5);
             mainObject.player.x = mainObject.dom.x = display.centerW - 120;
             mainObject.player.y = mainObject.dom.y = -80;
             moveToPoint('player', display.centerW + 30, 136, false);
             moveToPoint('dom', display.centerW - 30, 136, false);
+            mainConfig.moveFinishedEvent.player = function () {
+                mainConfig.lookAt.player = mainObject.dom;
+                mainConfig.lookAt.dom = mainObject.player;
+                if(!ui.dialogGroup.visible) {
+                    ui.skip.setVisible(true);
+                    ui.dialogGroup.setVisible(true);
+                }
+                dialog();
+            }
+            mainConfig.moveFinishedEvent.dom = function () {
+                mainObject.dom.play('dom-talk');
+            }
+
+            for (let i = 0; i < mainObject.sheeps.length; i++) {
+                let sheep = mainObject.sheeps[i];
+                mainConfig.sheepBlinkTimer[i] = setTimeout(function () {
+                    if(sheep.anims.currentAnim.key === 'sheep-stand') sheep.play('sheep-talk');
+                }, Math.round(Math.random() * 2400));
+            }
+            for (let i = 0; i < mainObject.sheeps.length; i++) {
+                let sheep = mainObject.sheeps[i];
+                sheep.on('animationcomplete', function () {
+                    if(sheep.anims.currentAnim.key === 'sheep-talk') {
+                        sheep.play('sheep-stand');
+                        sheepTalk(i ,sheep);
+                    }
+                });
+            }
+        }
+        else if(chapterIdx === 3){
+            maps.navMesh.destroy();
+            setVisibleObjects(false, mainObject.sheeps);
+            setVisibleObjects(false, [ui.skip, ui.bridge, mainObject.man]);
+            setVisibleObjects(true, [mainObject.fishman]);
+            maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[3], 12.5);
+            mainObject.player.x = display.width + 40;
+            mainObject.dom.x = display.width + 120;
+            mainObject.player.y = mainObject.dom.y = 80;
+            moveToPoint('player', 240, 100, false);
+            moveToPoint('dom', 280, 100, false);
             mainConfig.moveFinishedEvent.player = function () {
                 mainConfig.lookAt.player = mainObject.dom;
                 mainConfig.lookAt.dom = mainObject.player;

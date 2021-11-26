@@ -1,42 +1,42 @@
 {
 "frames":[
   {
-        "filename": "rock",
-        "frame":  { "x": 0, "y" :0, "w" :40, "h" :60 },
+        "filename": "rock0",
+        "frame":  { "x": 0, "y" :0, "w" :58, "h" :33 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :40, "h" :60 },
-        "sourceSize": { "w" :40, "h" :60 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :58, "h" :33 },
+        "sourceSize": { "w" :58, "h" :33 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ,
   {
-        "filename": "pc",
-        "frame":  { "x": 48, "y" :0, "w" :64, "h" :90 },
+        "filename": "rock1",
+        "frame":  { "x": 58, "y" :0, "w" :36, "h" :31 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :64, "h" :90 },
-        "sourceSize": { "w" :64, "h" :90 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :36, "h" :31 },
+        "sourceSize": { "w" :36, "h" :31 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ,
   {
-        "filename": "title",
-        "frame":  { "x": 0, "y" :96, "w" :144, "h" :112 },
+        "filename": "rock2",
+        "frame":  { "x": 0, "y" :33, "w" :63, "h" :40 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :144, "h" :112 },
-        "sourceSize": { "w" :144, "h" :112 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :63, "h" :40 },
+        "sourceSize": { "w" :63, "h" :40 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ,
   {
         "filename": "particle",
-        "frame":  { "x": 0, "y" :64, "w" :16, "h" :16 },
+        "frame":  { "x": 0, "y" :73, "w" :7, "h" :7 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
-        "sourceSize": { "w" :16, "h" :16 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :7, "h" :7 },
+        "sourceSize": { "w" :7, "h" :7 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ]

@@ -1,7 +1,7 @@
 {
 "frames":[
   {
-        "filename": "esc-t",
+        "filename": "Slice 1",
         "frame":  { "x": 0, "y" :0, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -11,7 +11,7 @@
   }
   ,
   {
-        "filename": "1t",
+        "filename": "Slice 2",
         "frame":  { "x": 15, "y" :0, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -21,7 +21,7 @@
   }
   ,
   {
-        "filename": "2t",
+        "filename": "Slice 3",
         "frame":  { "x": 30, "y" :0, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -31,7 +31,7 @@
   }
   ,
   {
-        "filename": "3t",
+        "filename": "Slice 4",
         "frame":  { "x": 45, "y" :0, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -41,7 +41,7 @@
   }
   ,
   {
-        "filename": "4t",
+        "filename": "Slice 5",
         "frame":  { "x": 60, "y" :0, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -51,7 +51,7 @@
   }
   ,
   {
-        "filename": "5t",
+        "filename": "Slice 6",
         "frame":  { "x": 75, "y" :0, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -61,7 +61,7 @@
   }
   ,
   {
-        "filename": "6t",
+        "filename": "Slice 7",
         "frame":  { "x": 90, "y" :0, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -71,7 +71,7 @@
   }
   ,
   {
-        "filename": "7t",
+        "filename": "Slice 8",
         "frame":  { "x": 105, "y" :0, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -81,7 +81,7 @@
   }
   ,
   {
-        "filename": "8t",
+        "filename": "Slice 9",
         "frame":  { "x": 0, "y" :12, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -91,7 +91,7 @@
   }
   ,
   {
-        "filename": "9t",
+        "filename": "Slice 10",
         "frame":  { "x": 15, "y" :12, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -101,7 +101,7 @@
   }
   ,
   {
-        "filename": "0t",
+        "filename": "Slice 11",
         "frame":  { "x": 30, "y" :12, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -111,7 +111,7 @@
   }
   ,
   {
-        "filename": "danger-t",
+        "filename": "Slice 12",
         "frame":  { "x": 45, "y" :12, "w" :45, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -121,7 +121,7 @@
   }
   ,
   {
-        "filename": "power-t",
+        "filename": "Slice 13",
         "frame":  { "x": 90, "y" :12, "w" :9, "h" :9 },
         "rotated": false,
         "trimmed": true,
@@ -131,7 +131,7 @@
   }
   ,
   {
-        "filename": "power-f",
+        "filename": "Slice 14",
         "frame":  { "x": 99, "y" :12, "w" :9, "h" :9 },
         "rotated": false,
         "trimmed": true,
@@ -141,7 +141,7 @@
   }
   ,
   {
-        "filename": "esc-f",
+        "filename": "Slice 15",
         "frame":  { "x": 0, "y" :24, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -151,7 +151,7 @@
   }
   ,
   {
-        "filename": "1f",
+        "filename": "Slice 16",
         "frame":  { "x": 15, "y" :24, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -161,7 +161,7 @@
   }
   ,
   {
-        "filename": "2f",
+        "filename": "Slice 17",
         "frame":  { "x": 30, "y" :24, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -171,7 +171,7 @@
   }
   ,
   {
-        "filename": "3f",
+        "filename": "Slice 18",
         "frame":  { "x": 45, "y" :24, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -181,7 +181,7 @@
   }
   ,
   {
-        "filename": "4f",
+        "filename": "Slice 19",
         "frame":  { "x": 60, "y" :24, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -191,7 +191,7 @@
   }
   ,
   {
-        "filename": "5f",
+        "filename": "Slice 20",
         "frame":  { "x": 75, "y" :24, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -201,7 +201,7 @@
   }
   ,
   {
-        "filename": "6f",
+        "filename": "Slice 21",
         "frame":  { "x": 90, "y" :24, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -211,7 +211,7 @@
   }
   ,
   {
-        "filename": "7f",
+        "filename": "Slice 22",
         "frame":  { "x": 105, "y" :24, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -221,7 +221,7 @@
   }
   ,
   {
-        "filename": "8f",
+        "filename": "Slice 23",
         "frame":  { "x": 0, "y" :36, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -231,7 +231,7 @@
   }
   ,
   {
-        "filename": "9f",
+        "filename": "Slice 24",
         "frame":  { "x": 15, "y" :36, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -241,7 +241,7 @@
   }
   ,
   {
-        "filename": "0f",
+        "filename": "Slice 25",
         "frame":  { "x": 30, "y" :36, "w" :15, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -251,7 +251,7 @@
   }
   ,
   {
-        "filename": "danger-f",
+        "filename": "Slice 26",
         "frame":  { "x": 45, "y" :36, "w" :45, "h" :12 },
         "rotated": false,
         "trimmed": true,
@@ -261,7 +261,7 @@
   }
   ,
   {
-        "filename": "enter-t",
+        "filename": "Slice 27",
         "frame":  { "x": 0, "y" :48, "w" :21, "h" :26 },
         "rotated": false,
         "trimmed": true,
@@ -271,92 +271,12 @@
   }
   ,
   {
-        "filename": "enter-f",
+        "filename": "Slice 28",
         "frame":  { "x": 21, "y" :48, "w" :22, "h" :26 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :22, "h" :26 },
         "sourceSize": { "w" :22, "h" :26 },
-        "pivot":  { "x": 0, "y" :1 }
-  }
-  ,
-  {
-        "filename": "down",
-        "frame":  { "x": 0, "y" :74, "w" :64, "h" :48 },
-        "rotated": false,
-        "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :64, "h" :48 },
-        "sourceSize": { "w" :64, "h" :48 },
-        "pivot":  { "x": 0, "y" :1 }
-  }
-  ,
-  {
-        "filename": "parts0",
-        "frame":  { "x": 64, "y" :64, "w" :16, "h" :16 },
-        "rotated": false,
-        "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
-        "sourceSize": { "w" :16, "h" :16 },
-        "pivot":  { "x": 0, "y" :1 }
-  }
-  ,
-  {
-        "filename": "parts1",
-        "frame":  { "x": 64, "y" :48, "w" :16, "h" :16 },
-        "rotated": false,
-        "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
-        "sourceSize": { "w" :16, "h" :16 },
-        "pivot":  { "x": 0, "y" :1 }
-  }
-  ,
-  {
-        "filename": "parts2",
-        "frame":  { "x": 80, "y" :48, "w" :16, "h" :16 },
-        "rotated": false,
-        "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
-        "sourceSize": { "w" :16, "h" :16 },
-        "pivot":  { "x": 0, "y" :1 }
-  }
-  ,
-  {
-        "filename": "parts3",
-        "frame":  { "x": 80, "y" :64, "w" :16, "h" :16 },
-        "rotated": false,
-        "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
-        "sourceSize": { "w" :16, "h" :16 },
-        "pivot":  { "x": 0, "y" :1 }
-  }
-  ,
-  {
-        "filename": "crack0",
-        "frame":  { "x": 112, "y" :96, "w" :32, "h" :16 },
-        "rotated": false,
-        "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
-        "sourceSize": { "w" :32, "h" :16 },
-        "pivot":  { "x": 0, "y" :1 }
-  }
-  ,
-  {
-        "filename": "crack1",
-        "frame":  { "x": 112, "y" :112, "w" :32, "h" :16 },
-        "rotated": false,
-        "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
-        "sourceSize": { "w" :32, "h" :16 },
-        "pivot":  { "x": 0, "y" :1 }
-  }
-  ,
-  {
-        "filename": "pc-console",
-        "frame":  { "x": 64, "y" :95, "w" :27, "h" :17 },
-        "rotated": false,
-        "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :27, "h" :17 },
-        "sourceSize": { "w" :27, "h" :17 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ]
