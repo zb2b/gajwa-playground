@@ -46,7 +46,7 @@ const moveTargets = {
 };
 const mainConfig = {
     debugMode : false,
-    debugModeChapter: 1,
+    debugModeChapter: 0,
 
     playerMovable : false,
     domFollow: false,
