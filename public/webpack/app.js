@@ -50,8 +50,8 @@ const moveTargets = {
     engineer: {x: 0, y: 0}
 };
 const mainConfig = {
-    debugMode : true,
-    debugModeChapter: 3,
+    debugMode : false,
+    debugModeChapter: 0,
 
     playerMovable : false,
     domFollow: false,
