@@ -496,7 +496,7 @@
   "size": { "w": 256, "h": 224 },
   "scale": "1",
   "frameTags": [
-   { "name": "player-stand", "from": 0, "to": 0, "direction": "forward" },
+   { "name": "player-stand", "from": 0, "to": 1, "direction": "forward" },
    { "name": "player-seek", "from": 2, "to": 3, "direction": "forward" },
    { "name": "player-run", "from": 4, "to": 7, "direction": "forward" , "frameRate": 8 },
     { "name": "player-jump", "from": 4, "to": 5, "direction": "forward" , "frameRate": 8,  "repeat": null },

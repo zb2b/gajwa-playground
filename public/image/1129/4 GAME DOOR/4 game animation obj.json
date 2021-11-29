@@ -1,0 +1,113 @@
+{
+"frames":[
+  {
+        "filename": "default door",
+        "frame":  { "x": 0, "y" :0, "w" :35, "h" :48 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :35, "h" :48 },
+        "sourceSize": { "w" :35, "h" :48 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "select door",
+        "frame":  { "x": 35, "y" :0, "w" :35, "h" :48 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :35, "h" :48 },
+        "sourceSize": { "w" :35, "h" :48 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "door open1",
+        "frame":  { "x": 0, "y" :48, "w" :35, "h" :48 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :35, "h" :48 },
+        "sourceSize": { "w" :35, "h" :48 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "door open 2",
+        "frame":  { "x": 35, "y" :48, "w" :35, "h" :48 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :35, "h" :48 },
+        "sourceSize": { "w" :35, "h" :48 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "door open 3",
+        "frame":  { "x": 70, "y" :48, "w" :35, "h" :48 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :35, "h" :48 },
+        "sourceSize": { "w" :35, "h" :48 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "door open 4",
+        "frame":  { "x": 105, "y" :48, "w" :35, "h" :48 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :35, "h" :48 },
+        "sourceSize": { "w" :35, "h" :48 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "door open 5",
+        "frame":  { "x": 140, "y" :48, "w" :35, "h" :48 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :35, "h" :48 },
+        "sourceSize": { "w" :35, "h" :48 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "door open 6",
+        "frame":  { "x": 175, "y" :48, "w" :35, "h" :48 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :35, "h" :48 },
+        "sourceSize": { "w" :35, "h" :48 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "door open 7",
+        "frame":  { "x": 210, "y" :48, "w" :35, "h" :48 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :35, "h" :48 },
+        "sourceSize": { "w" :35, "h" :48 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "light 1",
+        "frame":  { "x": 0, "y" :96, "w" :119, "h" :15 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :119, "h" :15 },
+        "sourceSize": { "w" :119, "h" :15 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "light 2",
+        "frame":  { "x": 119, "y" :96, "w" :119, "h" :15 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :119, "h" :15 },
+        "sourceSize": { "w" :119, "h" :15 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ]
+}

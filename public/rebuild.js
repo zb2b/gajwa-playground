@@ -87,6 +87,7 @@ const mainConfig = {
         end: {x: display.centerW + 60, y: display.height - 100}
     },
 
+    fishingDone : false,
     fishingbarGrav: null,
     fishCasting: null,
     fishingBarSize: 40,
@@ -121,6 +122,7 @@ function preload() {
     this.load.image("tileset", "map/tile-set.png");
     // sprites
     this.load.aseprite('character', 'image/characters.png', 'image/characters.json');
+    this.load.aseprite('fishing-player', 'image/fishing-player.png', 'image/fishing-player.json');
     this.load.aseprite('stones', 'image/stones.png', 'image/stones.json');
     this.load.image("fish-player", "image/fishchar.png");
     this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
@@ -327,9 +329,21 @@ function update() {
     }
     if(status.chapterIdx === 3){
         if(mainConfig.fishingNow){
+            if(mainConfig.fishPoint > 0){
+                ui.fishingCastbar.setFillStyle(Phaser.Display.Color.GetColor(0, 255, 0));
+                ui.fishingCastBoxB.setTexture('ui', 'catch').setOrigin(0.5);
+                ui.fishingCastbar.width = Math.round(mainConfig.fishPoint * 0.45);
+                ui.fishingCastbar.setOrigin(0.5);
+            }
+            else {
+
+                ui.fishingCastbar.setFillStyle(Phaser.Display.Color.GetColor(255, 0, 0));
+                ui.fishingCastBoxB.setTexture('ui', 'run').setOrigin(0.5);
+                ui.fishingCastbar.width = Math.abs(Math.round(mainConfig.fishPoint * 0.45));
+                ui.fishingCastbar.setOrigin(0.5);
+            }
             const side = {top: ui.fishingBar.y - mainConfig.fishingBarSize * 0.5, bottom: ui.fishingBar.y + mainConfig.fishingBarSize * 0.5};
             if(side.top < ui.fishIcon.y + 42 && ui.fishIcon.y - 42 < side.bottom){
-                ui.fishIcon.setTint(0x00ff00);
                 if(mainConfig.fishPoint < 320) mainConfig.fishPoint++;
                 else if(mainConfig.fishPoint === 320) {
                     // 잡음
@@ -337,15 +351,13 @@ function update() {
                     fishingFinish(true);
                 }
             } else {
-                ui.fishIcon.setTint(0xff0000);
-                if(mainConfig.fishPoint > 0) mainConfig.fishPoint--;
-                else if(mainConfig.fishPoint === 0) {
-                    mainConfig.fishRun++;
-                    if(mainConfig.fishRun > 3200){
-                        // 도망
-                        mainConfig.fishRun = 0;
-                        fishingFinish(false);
-                    }
+                if(mainConfig.fishPoint > -320) {
+                    mainConfig.fishPoint--;
+                }
+                if(mainConfig.fishPoint === -320){
+                    // 도망
+                    mainConfig.fishPoint = 0;
+                    fishingFinish(false);
                 }
             }
         }
@@ -575,8 +587,44 @@ function createUIObjects(scene) {
         ui.bridges[i] = scene.add.sprite(bridgePos[i].x + 64, bridgePos[i].y).play('stone' + i).setScale(2).setOrigin(0.5, 0);
     }
     // 낚시게임 생성
+    mainConfig.fishingAnims = scene.anims.createFromAseprite('fishing-player');
+    let fishingData = scene.cache.json.get('fishing-player').meta.frameTags;
+    for (let i = 0; i < fishingData.length; i++) {
+        if(fishingData[i].repeat === undefined) mainConfig.fishingAnims[i].repeat = -1;
+        else mainConfig.fishingAnims[i].repeat = fishingData[i].repeat;
+        if(fishingData[i].frameRate === undefined) mainConfig.fishingAnims[i].frameRate = 2;
+        else mainConfig.fishingAnims[i].frameRate = fishingData[i].frameRate;
+    }
+
     ui.fishing = scene.add.sprite(0, display.height).play('fishing').setScale(3);
-    ui.fishingPlayer = scene.add.sprite(121, 357.5, 'fish-player').setScale(3);
+    ui.fishingPlayer = scene.add.sprite(24, 404).play('fishing-wait').setScale(3).setOrigin(0, 1);
+    ui.fishingPlayer.on('animationcomplete', function () {
+        let key = ui.fishingPlayer.anims.currentAnim.key;
+        if(key === 'fishing-throw') {
+            ui.fishingPlayer.play('fishing-wait');
+        }
+    });
+    ui.fishingPlayer.on('animationupdate', function (anim, frame) {
+        let key = ui.fishingPlayer.anims.currentAnim.key;
+        if(key === 'fishing-cancel'){
+            if(frame.textureFrame === '16'){
+                fishingBack(false);
+            }
+        }
+        if(key === 'fishing-finish') {
+            if(frame.textureFrame === '16'){
+                fishingBack(true);
+                setTimeout(function (){
+                    scene.tweens.add({
+                        targets: ui.gameGroup,
+                        y: -860,
+                        duration: 2000,
+                        ease: Phaser.Math.Easing.Quintic.In,
+                    });
+                }, 800);
+            }
+        }
+    });
 
     ui.fishingCastGroup = scene.add.container().setPosition(display.centerW, 140);
     ui.fishingCastbar = scene.add.rectangle(0, 0, 0, 24, 0x00ff00).setOrigin(0.5);
@@ -589,8 +637,7 @@ function createUIObjects(scene) {
     let fishingBoxHeight = 80;
     ui.fishingBox[0] = scene.add.rectangle(display.centerW, display.centerH - fishingBoxHeight * 1.5, 80, 20, 0x000000).setOrigin(0.5).setVisible(false);
     ui.fishingBox[1] = scene.add.rectangle(display.centerW, display.centerH + fishingBoxHeight * 1.5 + 1.5, 80, 20, 0x000000).setOrigin(0.5).setVisible(false);
-    ui.fishIcon = scene.physics.add.sprite(display.centerW, display.centerH - 80).play('fish-icon').setScale(3).setFlipX(true)
-        .setSize(16, 12).setOffset(0, 2);
+    ui.fishIcon = scene.physics.add.sprite(display.centerW, display.centerH - 80, 'ui', 'fishicon').setOrigin(0.5).setScale(3).setFlipX(true);
     ui.fishingUI = scene.add.rexNinePatch({
         x: display.centerW, y: display.centerH + 1,
         width: 20, height: fishingBoxHeight,
@@ -616,21 +663,19 @@ function createUIObjects(scene) {
     scene.physics.add.collider(ui.fishingBox[1], ui.fishIcon);
     ui.fishingBar.body.bounce.y = 0.5;
 
-    ui.fishingBtn = scene.add.sprite(display.centerW - 48, display.height - 100, 'ui', 'fishBtn0').setOrigin(0.5).setScale(3).setInteractive();
-    ui.hookBtn = scene.add.sprite(display.centerW + 48, display.height - 100, 'ui', 'hookBtn0').setOrigin(0.5).setScale(3).setInteractive();
+    ui.fishingBtn = scene.add.sprite(display.centerW, display.height - 100, 'ui', 'fishBtn0').setOrigin(0.5).setScale(3).setInteractive();
 
-    ui.fishingFloat = scene.add.sprite(0, 0, 'ui', 'float').setOrigin(0.5).setScale(3).setVisible(false);
-    ui.hookBtn.on('pointerdown', function (){
-        this.setTexture('ui', 'hookBtn1').setOrigin(0.5);
-    }).on('pointerup', function (){
-        this.setTexture('ui', 'hookBtn0').setOrigin(0.5);
-    }).on('pointerout', function (){
-        this.setTexture('ui', 'hookBtn0').setOrigin(0.5);
+    ui.fishingFloat = scene.add.sprite(0, 0, 'ui', 'float').setScale(3).setVisible(false);
+    ui.fishingFloat.on('animationcomplete', function () {
+        let key = ui.fishingFloat.anims.currentAnim.key;
+        if(key === 'float-in') {
+            ui.fishingFloat.play('float-loop');
+        }
     });
 
     ui.fishingBtn.on('pointerdown', function () {
-        this.setTexture('ui', 'fishBtn1').setOrigin(0.5);
-        if(mainConfig.fishingNow){
+        this.setTexture('ui', (mainConfig.fishingNow) ? 'hookBtn1' : 'fishBtn1').setOrigin(0.5);
+        if(mainConfig.fishingNow || mainConfig.fishingDone){
             mainConfig.fishingbarGrav = scene.tweens.addCounter({
                 from: 0,
                 to: -800,
@@ -661,22 +706,22 @@ function createUIObjects(scene) {
                     // 낚기 시작
                     mainConfig.fishingNow = true;
                     startFishing();
-                    return;
                 }
                 else {
                     // 낚싯대 되돌리기
-                    ui.fishingFloat.setTexture('ui', 'float').setOrigin(0.5);
+                    if(ui.fishingPlayer.anims.currentAnim.key === 'fishing-cancel') return;
+                    ui.fishingPlayer.play('fishing-cancel');
                     ui.task.text = "길게 눌러서 낚싯대를 던지자";
-                    mainConfig.fishingRodOn = false;
                     ui.fishingCastbar.width = 0;
                     ui.fishingCastbar.setOrigin(0.5);
-                    ui.fishingFloat.setVisible(false);
-                    return;
                 }
             }
-            let power = [0, 150];
-            casting(power);
+            else {
+                let power = [0, 150];
+                casting(power);
+            }
             function casting(power) {
+                ui.fishingPlayer.play('fishing-power');
                 let ease = (power[0] === 0) ? Phaser.Math.Easing.Quintic.In : Phaser.Math.Easing.Quintic.Out;
                 mainConfig.fishCasting = scene.tweens.addCounter({
                     from: power[0],
@@ -701,10 +746,10 @@ function createUIObjects(scene) {
         }
 
     }).on('pointerup', function () {
-        this.setTexture('ui', 'fishBtn0').setOrigin(0.5);
+        this.setTexture('ui', (mainConfig.fishingNow) ? 'hookBtn0' : 'fishBtn0' ).setOrigin(0.5);
         fishOut();
     }).on('pointerout', function () {
-        this.setTexture('ui', 'fishBtn0').setOrigin(0.5);
+        this.setTexture('ui', (mainConfig.fishingNow) ? 'hookBtn0' : 'fishBtn0').setOrigin(0.5);
         fishOut();
     });
     function fishOut() {
@@ -726,7 +771,7 @@ function createUIObjects(scene) {
     ui.gameScene = [];
     ui.gameScene[0] = scene.add.container().add([ui.pcKeyboard, ui.pc, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff, ui.pcBreak]);
     ui.gameScene[1] = scene.add.container();
-    ui.gameScene[2] = scene.add.container().add([ui.fishing, ui.fishingPlayer, ui.fishingCastGroup, ui.fishingEffect, ui.fishingFloat, ui.fishingGroup, ui.fishingBtn, ui.hookBtn]);
+    ui.gameScene[2] = scene.add.container().add([ui.fishing, ui.fishingPlayer, ui.fishingCastGroup, ui.fishingEffect, ui.fishingFloat, ui.fishingGroup, ui.fishingBtn]);
     ui.bridge = scene.add.container().setVisible(false);
     ui.bridges.forEach(function (bridge, index) {
         ui.bridge.add(bridge);
@@ -903,12 +948,6 @@ function setAnimations(scene) {
         frames: scene.anims.generateFrameNumbers('float-water', { start: 9, end: 18 }),
         frameRate: 16
     });
-    scene.anims.create({
-        key: 'fish-icon',
-        frames: scene.anims.generateFrameNumbers('fish-icon', { start: 0, end: 1 }),
-        frameRate: 8,
-        repeat: -1
-    });
     // backgrounds
     scene.anims.create({
         key: 'bg0',
@@ -964,6 +1003,32 @@ function setAnimations(scene) {
         frameRate: 2,
         frames: scene.anims.generateFrameNames('minigame', {
             prefix: 'fishing',
+            end: 2
+        })
+    });
+    scene.anims.create({
+        key: 'float-in',
+        frameRate: 6,
+        frames: scene.anims.generateFrameNames('ui', {
+            prefix: 'float-in',
+            end: 2
+        })
+    });
+    scene.anims.create({
+        key: 'float-loop',
+        repeat: -1,
+        frameRate: 2,
+        frames: scene.anims.generateFrameNames('ui', {
+            prefix: 'float-loop',
+            end: 1
+        })
+    });
+    scene.anims.create({
+        key: 'float-bite',
+        frameRate: 6,
+        repeat: -1,
+        frames: scene.anims.generateFrameNames('ui', {
+            prefix: 'float-in',
             end: 2
         })
     });
@@ -1061,16 +1126,61 @@ function jumpTo(jumper, target, action) {
         }
     });
 }
+function fishingBack(catched) {
+    const scene = game.scene.scenes[0];
+    let target = {x: ui.fishingPlayer.x + 48, y: ui.fishingPlayer.y};
+    const path = [];
+    path[0] = {x: ui.fishingFloat.x, y: ui.fishingFloat.y};
+    path[1] = {x: lerp(ui.fishingFloat.x, target.x, 0.85) , y: lerp(ui.fishingFloat.y - 180, target.y - 180, 0.5)};
+    path[2] = {x: target.x, y: target.y};
+
+    ui.fishingFloat.stop();
+    if(catched) ui.fishingFloat.setTexture('ui', 'fish').setOrigin(0.5);
+    else ui.fishingFloat.setTexture('ui', 'float').setOrigin(0.5);
+
+    mainConfig.fishFloatTween[0] = scene.tweens.add({
+        targets: ui.fishingFloat,
+        x: path[2].x,
+        duration: 1200,
+        ease: Phaser.Math.Easing.Linear
+    });
+    mainConfig.fishFloatTween[1] = scene.tweens.add({
+        targets: ui.fishingFloat,
+        y: path[1].y,
+        duration: 600,
+        ease: Phaser.Math.Easing.Quadratic.Out,
+        onComplete: function () {
+            mainConfig.fishFloatTween[2] = scene.tweens.add({
+                targets: ui.fishingFloat,
+                y: path[2].y,
+                duration: 600,
+                ease: Phaser.Math.Easing.Quartic.In,
+                onComplete: function () {
+                    if(catched){
+                        ui.fishingPlayer.play('fishing-done');
+                    }
+                    else {
+                        ui.fishingPlayer.play('fishing-wait');
+                        mainConfig.fishingRodOn = false;
+                    }
+                    ui.fishingFloat.setVisible(false);
+                }
+            });
+        }
+    });
+}
 function fishingCastFloat(power) {
     // 낚시찌 던지기
+    mainConfig.fishingRodOn = true;
     const scene = game.scene.scenes[0];
     for (let i = 0; i < mainConfig.fishFloatTween.length; i++) {
         mainConfig.fishFloatTween[i].stop();
     }
+    ui.fishingPlayer.play('fishing-throw');
     ui.fishingFloat.setVisible(true);
     // 찌 출발위치
-    ui.fishingFloat.setPosition(120, display.centerH);
-    let target = {x: 180 + Math.round(power), y: 400};
+    ui.fishingFloat.setPosition(ui.fishingPlayer.x + 48, ui.fishingPlayer.y);
+    let target = {x: 180 + Math.round(power), y: 420 + Math.round(Math.random() * 20)};
     const path = [];
     path[0] = {x: ui.fishingFloat.x, y: ui.fishingFloat.y};
     path[1] = {x: lerp(ui.fishingFloat.x, target.x, 0.85) , y: lerp(ui.fishingFloat.y - 160 - Math.round(power * 0.5), target.y - 160 - Math.round(power * 0.5), 0.5)};
@@ -1097,6 +1207,7 @@ function fishingCastFloat(power) {
                     ui.floatWater.setPosition(target.x, target.y);
                     ui.floatWater.setVisible(true);
                     ui.floatWater.play('float-water');
+                    ui.fishingFloat.play('float-in');
                     // 찌 물에 떨어짐
                     // 낚시 시작
                     startBite();
@@ -1299,7 +1410,10 @@ function setGameScenes() {
 function fishingFinish(success) {
     // 낚시 완료
     // success: 성공 여부
-    console.log('fishing ' , (success) ? 'success' : 'failed');
+    ui.fishingCastbar.width = 0;
+    ui.fishingCastbar.setOrigin(0.5);
+    ui.fishingCastbar.setFillStyle(Phaser.Display.Color.GetColor(255, 0, 0));
+    ui.fishingBtn.setTexture('ui', 'fishBtn0').setOrigin(0.5);
     let scene = game.scene.scenes[0];
 
     mainConfig.fishingNow = false;
@@ -1313,24 +1427,24 @@ function fishingFinish(success) {
     setVisibleObjects(false, [ui.fishingBar, ui.fishingGroup]);
     if(success){
         setTask(false);
+        ui.fishingPlayer.play('fishing-finish');
+        mainConfig.fishingDone = true;
         ui.gameGroup.setVisible(true);
-        scene.tweens.add({
-            targets: ui.gameGroup,
-            y: -860,
-            duration: 2000,
-            ease: Phaser.Math.Easing.Quintic.In,
-        });
     }
     else {
         setTimeout(function () {
-            ui.fishingFloat.setVisible(false);
+            ui.fishingCastBoxB.setTexture('ui', 'power1').setOrigin(0.5);
+            ui.fishingFloat.play('float-loop');
+            startBite();
         }, 200);
     }
 }
 function startFishing() {
     console.log('start fishing');
+    ui.fishingCastBoxB.setTexture('ui', 'catch').setOrigin(0.5);
+    ui.fishingBtn.setTexture('ui', 'fishBtn0').setOrigin(0.5);
     setVisibleObjects(true, [ui.fishingBar, ui.fishingGroup]);
-    ui.task.text = '낚싯바늘 영역 안에 위치시키자';
+    ui.task.text = '물고기가 영역 안에 위치하도록 하자';
     createFloatWave(ui.fishingFloat);
     ui.fishingBar.body.setGravityY(800);
     fishMove();
@@ -1344,21 +1458,23 @@ function startFishing() {
 }
 function startBite() {
     clearTimeout(mainConfig.fishingFailTimer);
+    ui.fishingPlayer.play('fishing-wait');
     ui.task.text = '물고기가 물때까지 기다리자';
-    ui.fishingFloat.setTexture('ui', 'float-down').setOrigin(0.5);
-    mainConfig.fishingRodOn = true;
     //let waitFish = 2400 + Math.round(Math.random() * 8000);
     let waitFish = 1600 + Math.round(Math.random() * 2400);
     let waitFail = 2400 + Math.round(Math.random() * 2400);
     // 물고기 대기
     mainConfig.fishingTimer = setTimeout(function () {
         mainConfig.fishWait = true;
+        ui.fishingPlayer.play('fishing-catch');
         // 입질 시작
         ui.task.text = '한번 더 눌러서 낚시를 시작하자';
+        ui.fishingFloat.play('float-bite');
         createFloatWave(ui.fishingFloat);
         // 무반응할 경우 낚시 실패
         mainConfig.fishingFailTimer = setTimeout(function () {
             mainConfig.fishWait = false;
+            ui.fishingFloat.play('float-loop');
             startBite();
         }, waitFail);
     }, waitFish);

@@ -11,13 +11,13 @@
   }
   ,
   {
-        "filename": "fishing-hook",
-        "frame":  { "x": 64, "y" :0, "w" :16, "h" :32 },
+        "filename": "float",
+        "frame":  { "x": 0, "y" :64, "w" :32, "h" :16 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :32 },
-        "sourceSize": { "w" :16, "h" :32 },
-        "pivot":  { "x": 0, "y" :1 }
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
+        "sourceSize": { "w" :32, "h" :16 },
+        "pivot":  { "x": 0.5, "y" :1 }
   }
   ,
   {
@@ -51,23 +51,23 @@
   }
   ,
   {
-        "filename": "float",
-        "frame":  { "x": 80, "y" :0, "w" :16, "h" :16 },
+        "filename": "float-in0",
+        "frame":  { "x": 32, "y" :16, "w" :32, "h" :16 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
-        "sourceSize": { "w" :16, "h" :16 },
-        "pivot":  { "x": 0, "y" :1 }
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
+        "sourceSize": { "w" :32, "h" :16 },
+        "pivot":  { "x": 0.5, "y" :1 }
   }
   ,
   {
-        "filename": "float-down",
-        "frame":  { "x": 96, "y" :0, "w" :16, "h" :16 },
+        "filename": "float-in1",
+        "frame":  { "x": 64, "y" :16, "w" :32, "h" :16 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
-        "sourceSize": { "w" :16, "h" :16 },
-        "pivot":  { "x": 0, "y" :1 }
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
+        "sourceSize": { "w" :32, "h" :16 },
+        "pivot":  { "x": 0.5, "y" :1 }
   }
   ,
   {
@@ -172,7 +172,7 @@
   ,
   {
         "filename": "power0",
-        "frame":  { "x": 112, "y" :24, "w" :54, "h" :24 },
+        "frame":  { "x": 54, "y" :184, "w" :54, "h" :24 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :54, "h" :24 },
@@ -182,11 +182,81 @@
   ,
   {
         "filename": "power1",
-        "frame":  { "x": 112, "y" :0, "w" :54, "h" :24 },
+        "frame":  { "x": 0, "y" :160, "w" :54, "h" :24 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :54, "h" :24 },
         "sourceSize": { "w" :54, "h" :24 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "float-in2",
+        "frame":  { "x": 32, "y" :32, "w" :32, "h" :16 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
+        "sourceSize": { "w" :32, "h" :16 },
+        "pivot":  { "x": 0.5, "y" :1 }
+  }
+  ,
+  {
+        "filename": "float-loop0",
+        "frame":  { "x": 48, "y" :0, "w" :32, "h" :16 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
+        "sourceSize": { "w" :32, "h" :16 },
+        "pivot":  { "x": 0.5, "y" :1 }
+  }
+  ,
+  {
+        "filename": "float-loop1",
+        "frame":  { "x": 80, "y" :0, "w" :32, "h" :16 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
+        "sourceSize": { "w" :32, "h" :16 },
+        "pivot":  { "x": 0.5, "y" :1 }
+  }
+  ,
+  {
+        "filename": "catch",
+        "frame":  { "x": 0, "y" :184, "w" :54, "h" :24 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :54, "h" :24 },
+        "sourceSize": { "w" :54, "h" :24 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "run",
+        "frame":  { "x": 54, "y" :160, "w" :54, "h" :24 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :54, "h" :24 },
+        "sourceSize": { "w" :54, "h" :24 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "fishicon",
+        "frame":  { "x": 65, "y" :33, "w" :14, "h" :14 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :14, "h" :14 },
+        "sourceSize": { "w" :14, "h" :14 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "fish",
+        "frame":  { "x": 80, "y" :32, "w" :32, "h" :16 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
+        "sourceSize": { "w" :32, "h" :16 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ]
