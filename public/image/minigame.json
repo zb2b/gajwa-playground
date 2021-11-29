@@ -1,22 +1,72 @@
 {
 "frames":[
   {
-        "filename": "pc",
-        "frame":  { "x": 0, "y" :0, "w" :160, "h" :320 },
+        "filename": "pc-keyboard",
+        "frame":  { "x": 0, "y" :185, "w" :160, "h" :135 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :160, "h" :320 },
-        "sourceSize": { "w" :160, "h" :320 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :160, "h" :135 },
+        "sourceSize": { "w" :160, "h" :135 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ,
   {
-        "filename": "fishing",
-        "frame":  { "x": 160, "y" :0, "w" :80, "h" :160 },
+        "filename": "fishing0",
+        "frame":  { "x": 0, "y" :320, "w" :120, "h" :226 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :80, "h" :160 },
-        "sourceSize": { "w" :80, "h" :160 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :120, "h" :226 },
+        "sourceSize": { "w" :120, "h" :226 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "fishing1",
+        "frame":  { "x": 120, "y" :320, "w" :120, "h" :226 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :120, "h" :226 },
+        "sourceSize": { "w" :120, "h" :226 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "pc1",
+        "frame":  { "x": 144, "y" :0, "w" :144, "h" :171 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :144, "h" :171 },
+        "sourceSize": { "w" :144, "h" :171 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "pc2",
+        "frame":  { "x": 288, "y" :0, "w" :144, "h" :171 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :144, "h" :171 },
+        "sourceSize": { "w" :144, "h" :171 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "pc3",
+        "frame":  { "x": 240, "y" :171, "w" :144, "h" :171 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :144, "h" :171 },
+        "sourceSize": { "w" :144, "h" :171 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "pc0",
+        "frame":  { "x": 0, "y" :0, "w" :144, "h" :171 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :144, "h" :171 },
+        "sourceSize": { "w" :144, "h" :171 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ]

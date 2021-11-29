@@ -2,17 +2,7 @@
 "frames":[
   {
         "filename": "fishing-bg",
-        "frame":  { "x": 33, "y" :0, "w" :16, "h" :16 },
-        "rotated": false,
-        "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
-        "sourceSize": { "w" :16, "h" :16 },
-        "pivot":  { "x": 0, "y" :1 }
-  }
-  ,
-  {
-        "filename": "fishing-area",
-        "frame":  { "x": 48, "y" :0, "w" :16, "h" :16 },
+        "frame":  { "x": 32, "y" :0, "w" :16, "h" :16 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
@@ -137,6 +127,66 @@
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :9, "h" :50 },
         "sourceSize": { "w" :9, "h" :50 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "fishBtn0",
+        "frame":  { "x": 32, "y" :48, "w" :32, "h" :32 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :32 },
+        "sourceSize": { "w" :32, "h" :32 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "fishBtn1",
+        "frame":  { "x": 64, "y" :48, "w" :32, "h" :32 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :32 },
+        "sourceSize": { "w" :32, "h" :32 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "hookBtn0",
+        "frame":  { "x": 96, "y" :48, "w" :32, "h" :32 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :32 },
+        "sourceSize": { "w" :32, "h" :32 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "hookBtn1",
+        "frame":  { "x": 128, "y" :48, "w" :32, "h" :32 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :32 },
+        "sourceSize": { "w" :32, "h" :32 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "power0",
+        "frame":  { "x": 112, "y" :24, "w" :54, "h" :24 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :54, "h" :24 },
+        "sourceSize": { "w" :54, "h" :24 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "power1",
+        "frame":  { "x": 112, "y" :0, "w" :54, "h" :24 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :54, "h" :24 },
+        "sourceSize": { "w" :54, "h" :24 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ]

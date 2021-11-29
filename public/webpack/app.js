@@ -50,8 +50,8 @@ const moveTargets = {
     engineer: {x: 0, y: 0}
 };
 const mainConfig = {
-    debugMode : true,
-    debugModeChapter: 3,
+    debugMode : false,
+    debugModeChapter: 1,
 
     playerMovable : false,
     domFollow: false,
@@ -126,8 +126,9 @@ function preload() {
     this.load.image("tileset", "map/tile-set.png");
     // sprites
     this.load.aseprite('character', 'image/characters.png', 'image/characters.json');
+    this.load.aseprite('stones', 'image/stones.png', 'image/stones.json');
+    this.load.image("fish-player", "image/fishchar.png");
     this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
-    this.load.spritesheet('pc', 'image/pc-obj.png', { frameWidth: 74, frameHeight: 92, endFrame: 2 });
     // UI
     this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
     this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 4 });
@@ -144,7 +145,7 @@ function preload() {
     this.load.atlas("leaf", "image/leaf.png", 'image/leaf.json');
 
     //sample
-    this.load.image('sample', 'image/sample/3.png');
+    this.load.image('sample', 'image/sample/pc.png');
 }
 function create() {
     const resetConfig = {};
@@ -332,7 +333,7 @@ function update() {
     if(status.chapterIdx === 3){
         if(mainConfig.fishingNow){
             const side = {top: ui.fishingBar.y - mainConfig.fishingBarSize * 0.5, bottom: ui.fishingBar.y + mainConfig.fishingBarSize * 0.5};
-            if(side.top < ui.fishIcon.y && ui.fishIcon.y < side.bottom){
+            if(side.top < ui.fishIcon.y + 42 && ui.fishIcon.y - 42 < side.bottom){
                 ui.fishIcon.setTint(0x00ff00);
                 if(mainConfig.fishPoint < 320) mainConfig.fishPoint++;
                 else if(mainConfig.fishPoint === 320) {
@@ -345,7 +346,7 @@ function update() {
                 if(mainConfig.fishPoint > 0) mainConfig.fishPoint--;
                 else if(mainConfig.fishPoint === 0) {
                     mainConfig.fishRun++;
-                    if(mainConfig.fishRun > 320){
+                    if(mainConfig.fishRun > 3200){
                         // 도망
                         mainConfig.fishRun = 0;
                         fishingFinish(false);
@@ -402,18 +403,18 @@ function createCharacters(scene) {
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('dom-stand').setVisible(false);
     mainObject.engineer = scene.physics.add.sprite(104, 506)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('engineer-type').setVisible(false);
-    mainObject.man = scene.physics.add.sprite(display.centerW + 86, 180).play('man-stand')
+    mainObject.man = scene.physics.add.sprite(302, 168).play('man-stand')
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).setFlipX(true).setVisible(false);
     mainObject.fishman = scene.physics.add.sprite(146, 396).play('fishman-stand')
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).setVisible(false);
 
     mainObject.sheeps = [];
     const sheepPos = [
-        { x: 290, y: 60 },
-        { x: 240, y: 80 },
-        { x: 290, y: 140 },
-        { x: 260, y: 120 },
-        { x: 280, y: 100 }
+        { x: 216, y: 64 },
+        { x: 272, y: 64 },
+        { x: 328, y: 64 },
+        { x: 216, y: 106 },
+        { x: 272, y: 106 }
         ]
     for (let i = 0; i < 5; i++) {
         mainObject.sheeps[i] = scene.physics.add.sprite(sheepPos[i].x, sheepPos[i].y).play('sheep-stand')
@@ -457,11 +458,12 @@ function createUIObjects(scene) {
     ui.gameBackground = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
     ui.gameTransitionUp = scene.add.sprite(display.centerW, 0, 'ui', 'transition').setOrigin(0.5, 0).setFlipY(true).setScale(2);
     ui.gameTransitionDown = scene.add.sprite(display.centerW, display.height, 'ui', 'transition').setOrigin(0.5, 0).setScale(2);
-    ui.pc = scene.add.sprite(display.centerW, display.centerH, 'minigame', 'pc').setOrigin(0.5).setScale(2);
-    ui.pcOff = scene.add.rectangle(display.centerW, display.centerH - 137, 188, 158, 0xffffff).setVisible(false);
-    ui.pcErr = scene.add.sprite(display.centerW, display.centerH - 136).play('pc-err').setOrigin(0.5).setScale(2);
+    ui.pcOff = scene.add.rectangle(display.centerW, 200, 188, 158, 0xffffff).setVisible(false);
+    ui.pcErr = scene.add.sprite(display.centerW, 200).play('pc-err').setOrigin(0.5).setScale(2);
     ui.pcDown = scene.add.sprite(display.centerW, display.centerH - 136, 'keyboard', 'down').setOrigin(0.5).setScale(2).setVisible(false);
-    ui.pcCrack = scene.add.sprite(display.centerW - 62, display.centerH + 60, 'keyboard', 'crack0').setOrigin(1).setScale(2).setVisible(false);
+    ui.pcKeyboard = scene.add.sprite(20, 608, 'minigame', 'pc-keyboard').setScale(2);
+    ui.pc = scene.add.sprite(42, 430, 'minigame', 'pc0').setScale(2);
+
     ui.pcBreak = scene.add.rectangle(display.centerW - 16, display.centerH + 48, 210, 100, 0x0000f00, 0).setInteractive().on('pointerup', pointer => {
         createParts(pointer.x, pointer.y, RandomPlusMinus() * 200, -100 + Math.random() * -400);
     });
@@ -469,7 +471,7 @@ function createUIObjects(scene) {
     ui.pcPwList = [];
     ui.pcInfo = '';
     for (let i = 0; i < 4; i++) {
-        ui.pcPwList[i] = scene.add.text(92.5 + i * 36, 168, '*', fontConfig).setFontSize(48).setVisible(false);
+        ui.pcPwList[i] = scene.add.text(114 + i * 36, 184, '*', fontConfig).setFontSize(48).setVisible(false);
     }
     ui.pcPw.add(ui.pcPwList);
     ui.keyboard = scene.add.container();
@@ -534,7 +536,7 @@ function createUIObjects(scene) {
         maxSize: 10
     });
     // 낚시찌 물튐 효과 생성
-    ui.floatWater = scene.add.sprite(0, 0, 'float-water').setOrigin(0.5).setScale(2).setVisible(false);
+    ui.floatWater = scene.add.sprite(0, 0, 'float-water').setOrigin(0.5).setScale(3).setVisible(false);
     ui.floatWaterWave = scene.add.group({
         visible: false,
         frameQuantity: 10,
@@ -552,59 +554,65 @@ function createUIObjects(scene) {
     }
     // 징검다리 생성
     ui.bridges = [];
-    let bridgeR = 1;
+    mainConfig.animsStones = scene.anims.createFromAseprite('stones');
+    let stoneData = scene.cache.json.get('stones').meta.frameTags;
+    for (let i = 0; i < stoneData.length; i++) {
+        if(stoneData[i].repeat === undefined) mainConfig.animsStones[i].repeat = -1;
+        else mainConfig.animsStones[i].repeat = stoneData[i].repeat;
+        if(stoneData[i].frameRate === undefined) mainConfig.animsStones[i].frameRate = 2;
+        else mainConfig.animsStones[i].frameRate = stoneData[i].frameRate;
+    }
+    const bridgePos = [
+        // 0
+        {x: 32, y: 272},
+        {x: 124, y: 278},
+        {x: 32, y: 336},
+        {x: 140, y: 336},
+        {x: 68, y: 398},
+        // 5
+        {x: 172, y: 398},
+        {x: 86, y: 460},
+        {x: 198, y: 458},
+        {x: 92, y: 518},
+        {x: 200, y: 512},
+    ]
     for (let i = 0; i < 10; i++) {
-        let h = 68;
-        let side = 0;
-        let line = 0;
-        if(i % 2 === 0) {
-            bridgeR *= -1;
-            line += h * (i / 2);
-            side = bridgeR * 16;
-        }
-        else {
-            line += h * (i / 2) - h * 0.5;
-            side = bridgeR * 16 - 48;
-        }
-        ui.bridges[i] = scene.add.sprite(display.centerW + 24 + side,
-            240 + line, 'bridge').setScale(2).setOrigin(0.5, 0);
+        ui.bridges[i] = scene.add.sprite(bridgePos[i].x + 64, bridgePos[i].y).play('stone' + i).setScale(2).setOrigin(0.5, 0);
     }
     // 낚시게임 생성
-    ui.fishing = scene.add.sprite(display.centerW, display.centerH, 'minigame', 'fishing').setOrigin(0.5).setScale(3);
-    ui.fishingCastbar = scene.add.rectangle(display.centerW, display.height - 8, 0, 16, 0x00ff00).setOrigin(0.5);
+    ui.fishing = scene.add.sprite(0, display.height).play('fishing').setScale(3);
+    ui.fishingPlayer = scene.add.sprite(121, 357.5, 'fish-player').setScale(3);
+
+    ui.fishingCastGroup = scene.add.container().setPosition(display.centerW, 140);
+    ui.fishingCastbar = scene.add.rectangle(0, 0, 0, 24, 0x00ff00).setOrigin(0.5);
+    ui.fishingCastBoxA = scene.physics.add.sprite(0, -15, 'ui', 'power0').setOrigin(0.5).setScale(3);
+    ui.fishingCastBoxB = scene.physics.add.sprite(0, -15, 'ui', 'power1').setOrigin(0.5).setScale(3);
+    ui.fishingCastGroup.add([ui.fishingCastBoxA, ui.fishingCastbar, ui.fishingCastBoxB])
 
     ui.fishingGroup = scene.add.container();
     ui.fishingBox = [];
-    ui.fishingBox[0] = scene.add.rectangle(display.centerW, display.centerH - 126, 80, 20, 0xffff00).setOrigin(0.5).setVisible(false);
-    ui.fishingBox[1] = scene.add.rectangle(display.centerW, display.centerH + 126, 80, 20, 0xffff00).setOrigin(0.5).setVisible(false);
-    ui.fishIcon = scene.physics.add.sprite(display.centerW -6, display.centerH - 80).play('fish-icon').setScale(2).setFlipX(true).setSize(16, 12).setOffset(0, 2);
+    let fishingBoxHeight = 80;
+    ui.fishingBox[0] = scene.add.rectangle(display.centerW, display.centerH - fishingBoxHeight * 1.5, 80, 20, 0x000000).setOrigin(0.5).setVisible(false);
+    ui.fishingBox[1] = scene.add.rectangle(display.centerW, display.centerH + fishingBoxHeight * 1.5 + 1.5, 80, 20, 0x000000).setOrigin(0.5).setVisible(false);
+    ui.fishIcon = scene.physics.add.sprite(display.centerW, display.centerH - 80).play('fish-icon').setScale(3).setFlipX(true)
+        .setSize(16, 12).setOffset(0, 2);
     ui.fishingUI = scene.add.rexNinePatch({
-        x: display.centerW, y: display.centerH,
-        width: 40, height: 120,
+        x: display.centerW, y: display.centerH + 1,
+        width: 20, height: fishingBoxHeight,
         key: 'ui',
         baseFrame: 'fishing-bg',
-        columns: [4, undefined, 4],
-        rows: [4, undefined, 4],
-    }).setOrigin(0.5).setScale(2);
-    ui.fishingBarBG = scene.add.rexNinePatch({
-        x: 0, y: 0,
-        width: 36, height: mainConfig.fishingBarSize,
-        key: 'ui',
-        baseFrame: 'fishing-area',
-        columns: [4, undefined, 4],
-        rows: [4, undefined, 4],
-    }).setOrigin(0.5).setScale(2);
-    ui.fishingHook = scene.add.sprite(0, -16, 'ui', 'fishing-hook').setOrigin(0.5).setScale(2);
+        columns: [6, undefined, 6],
+        rows: [6, undefined, 6],
+    }).setOrigin(0.5).setScale(3);
 
-    ui.fishingBar = scene.add.container().setVisible(false);
+
+    ui.fishingBar = scene.add.rectangle(display.centerW, display.centerH, 42, mainConfig.fishingBarSize * 3, 0x00ff00);
+    scene.physics.add.existing(ui.fishingBar);
+
     ui.fishingEffect = scene.add.container();
-    ui.fishingBar.setPosition(display.centerW, display.centerH).setSize(60, mainConfig.fishingBarSize * 2);
-    ui.fishingBar.add([ui.fishingBarBG, ui.fishingHook]);
-
     ui.fishingGroup.add([ui.fishingUI, ui.fishingBox[0], ui.fishingBox[1], ui.fishingBar, ui.fishIcon]).setVisible(false);
     ui.fishingEffect.add(ui.floatWater);
 
-    scene.physics.add.existing(ui.fishingBar);
     scene.physics.add.existing(ui.fishingBox[0], true);
     scene.physics.add.existing(ui.fishingBox[1], true);
     scene.physics.add.collider(ui.fishingBox[0], ui.fishingBar);
@@ -613,10 +621,20 @@ function createUIObjects(scene) {
     scene.physics.add.collider(ui.fishingBox[1], ui.fishIcon);
     ui.fishingBar.body.bounce.y = 0.5;
 
-    ui.fishAction = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000, 0);
+    ui.fishingBtn = scene.add.sprite(display.centerW - 48, display.height - 100, 'ui', 'fishBtn0').setOrigin(0.5).setScale(3).setInteractive();
+    ui.hookBtn = scene.add.sprite(display.centerW + 48, display.height - 100, 'ui', 'hookBtn0').setOrigin(0.5).setScale(3).setInteractive();
 
-    ui.fishingFloat = scene.add.sprite(0, 0, 'ui', 'float').setOrigin(0.5).setScale(2).setVisible(false);
-    ui.fishAction.on('pointerdown', function () {
+    ui.fishingFloat = scene.add.sprite(0, 0, 'ui', 'float').setOrigin(0.5).setScale(3).setVisible(false);
+    ui.hookBtn.on('pointerdown', function (){
+        this.setTexture('ui', 'hookBtn1').setOrigin(0.5);
+    }).on('pointerup', function (){
+        this.setTexture('ui', 'hookBtn0').setOrigin(0.5);
+    }).on('pointerout', function (){
+        this.setTexture('ui', 'hookBtn0').setOrigin(0.5);
+    });
+
+    ui.fishingBtn.on('pointerdown', function () {
+        this.setTexture('ui', 'fishBtn1').setOrigin(0.5);
         if(mainConfig.fishingNow){
             mainConfig.fishingbarGrav = scene.tweens.addCounter({
                 from: 0,
@@ -661,7 +679,7 @@ function createUIObjects(scene) {
                     return;
                 }
             }
-            let power = [0, 320];
+            let power = [0, 150];
             casting(power);
             function casting(power) {
                 let ease = (power[0] === 0) ? Phaser.Math.Easing.Quintic.In : Phaser.Math.Easing.Quintic.Out;
@@ -688,8 +706,10 @@ function createUIObjects(scene) {
         }
 
     }).on('pointerup', function () {
+        this.setTexture('ui', 'fishBtn0').setOrigin(0.5);
         fishOut();
     }).on('pointerout', function () {
+        this.setTexture('ui', 'fishBtn0').setOrigin(0.5);
         fishOut();
     });
     function fishOut() {
@@ -703,15 +723,15 @@ function createUIObjects(scene) {
             mainConfig.fishCasting?.stop();
             let p = mainConfig.fishCasting.getValue();
             fishingCastFloat(p);
-            mainConfig.fishCasting = 0;
+            mainConfig.fishCasting = null;
         }
     }
 
     // 스테이지 별 미니게임 씬 오브젝트 추가
     ui.gameScene = [];
-    ui.gameScene[0] = scene.add.container().add([ui.pc, ui.pcCrack, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff, ui.pcBreak]);
+    ui.gameScene[0] = scene.add.container().add([ui.pcKeyboard, ui.pc, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff, ui.pcBreak]);
     ui.gameScene[1] = scene.add.container();
-    ui.gameScene[2] = scene.add.container().add([ui.fishing, ui.fishingCastbar, ui.fishingEffect, ui.fishingFloat, ui.fishingGroup, ui.fishAction]);
+    ui.gameScene[2] = scene.add.container().add([ui.fishing, ui.fishingPlayer, ui.fishingCastGroup, ui.fishingEffect, ui.fishingFloat, ui.fishingGroup, ui.fishingBtn, ui.hookBtn]);
     ui.bridge = scene.add.container().setVisible(false);
     ui.bridges.forEach(function (bridge, index) {
         ui.bridge.add(bridge);
@@ -823,11 +843,11 @@ function createObjects(scene) {
     object.list[0] = scene.add.sprite(242, 472, 'obj', 'rock0').setScale(2).setOrigin(0, 1).setVisible(false);
     object.list[1] = scene.add.sprite(12, 580, 'obj', 'rock1').setScale(2).setOrigin(0, 1).setVisible(false);
     object.list[2] = scene.add.sprite(234, 596 + 80, 'obj', 'rock2').setScale(2).setOrigin(0, 1).setVisible(false);
-    object.list[3] = scene.add.sprite(58 * 2, 143 * 2 + 92 * 2, 'pc').setScale(2).setOrigin(0, 1).play('pc').setVisible(false);
+    object.list[3] = scene.add.sprite(58 * 2, 143 * 2 + 92 * 2,'obj', 'pc-0').setScale(2).setOrigin(0, 1).play('pc').setVisible(false);
     object.list[4] = scene.add.sprite(110, 506, 'keyboard', 'pc-console').setScale(2).setOrigin(0, 1).setVisible(false);
 
     // 위치 맞추기용
-    object.sample = scene.add.sprite(0, 0, 'sample').setOrigin(0).setAlpha(0).setScale(2);
+    object.sample = scene.add.sprite(display.centerW, display.centerH, 'sample').setOrigin(0.5).setAlpha(0).setScale(2);
 
 }
 function setLayer(scene) {
@@ -917,12 +937,6 @@ function setAnimations(scene) {
         frameRate: 1,
     });
     scene.anims.create({
-        key: 'pc',
-        frames: scene.anims.generateFrameNumbers('pc', { start: 0, end: 2 }),
-        frameRate: 8,
-        repeat: -1
-    });
-    scene.anims.create({
         key: 'smoke',
         repeat: -1,
         frameRate: 4,
@@ -938,6 +952,24 @@ function setAnimations(scene) {
         frames: scene.anims.generateFrameNames('ui', {
             prefix: 'next-',
             end: 1
+        })
+    });
+    scene.anims.create({
+        key: 'pc',
+        repeat: -1,
+        frameRate: 8,
+        frames: scene.anims.generateFrameNames('obj', {
+            prefix: 'pc-',
+            end: 2
+        })
+    });
+    scene.anims.create({
+        key: 'fishing',
+        repeat: -1,
+        frameRate: 2,
+        frames: scene.anims.generateFrameNames('minigame', {
+            prefix: 'fishing',
+            end: 2
         })
     });
 }
@@ -1035,13 +1067,15 @@ function jumpTo(jumper, target, action) {
     });
 }
 function fishingCastFloat(power) {
+    // 낚시찌 던지기
     const scene = game.scene.scenes[0];
     for (let i = 0; i < mainConfig.fishFloatTween.length; i++) {
         mainConfig.fishFloatTween[i].stop();
     }
     ui.fishingFloat.setVisible(true);
-    ui.fishingFloat.setPosition(display.width, display.height);
-    let target = {x: display.centerW + getRandomInt(80), y: 420 - Math.round(power) + getRandomInt(20)};
+    // 찌 출발위치
+    ui.fishingFloat.setPosition(120, display.centerH);
+    let target = {x: 180 + Math.round(power), y: 400};
     const path = [];
     path[0] = {x: ui.fishingFloat.x, y: ui.fishingFloat.y};
     path[1] = {x: lerp(ui.fishingFloat.x, target.x, 0.85) , y: lerp(ui.fishingFloat.y - 160 - Math.round(power * 0.5), target.y - 160 - Math.round(power * 0.5), 0.5)};
@@ -1275,7 +1309,6 @@ function fishingFinish(success) {
 
     mainConfig.fishingNow = false;
     mainConfig.fishWait = false;
-    ui.fishAction.disableInteractive();
     ui.fishIcon.body.setGravityY(0);
     ui.fishIcon.body.setVelocity(0, 0);
     ui.fishingBar.body.setGravityY(0);
@@ -1288,7 +1321,7 @@ function fishingFinish(success) {
         ui.gameGroup.setVisible(true);
         scene.tweens.add({
             targets: ui.gameGroup,
-            y: -800,
+            y: -860,
             duration: 2000,
             ease: Phaser.Math.Easing.Quintic.In,
         });
@@ -1296,7 +1329,6 @@ function fishingFinish(success) {
     else {
         setTimeout(function () {
             ui.fishingFloat.setVisible(false);
-            ui.fishAction.setInteractive();
         }, 200);
     }
 }
@@ -1321,7 +1353,7 @@ function startBite() {
     ui.fishingFloat.setTexture('ui', 'float-down').setOrigin(0.5);
     mainConfig.fishingRodOn = true;
     //let waitFish = 2400 + Math.round(Math.random() * 8000);
-    let waitFish = 200 + Math.round(Math.random() * 800);
+    let waitFish = 1600 + Math.round(Math.random() * 2400);
     let waitFail = 2400 + Math.round(Math.random() * 2400);
     // 물고기 대기
     mainConfig.fishingTimer = setTimeout(function () {
@@ -1341,7 +1373,7 @@ function createFloatWave(target) {
     let wave =  ui.floatWaterWave.get();
     if (!wave) return;
     ui.fishingEffect.add(wave);
-    wave.setScale(2);
+    wave.setScale(3);
     wave.setPosition(target.x, target.y);
     wave.play('float-water-wave');
     wave.on('animationcomplete', function () {
@@ -1356,11 +1388,18 @@ function createParts(x, y, vx, vy) {
     // pc 부수기
     if(mainConfig.clear[0]) return;
     mainConfig.pcCrackCount++;
-    if(mainConfig.pcCrackCount === 10) ui.pcCrack.setVisible(true);
-    else if(mainConfig.pcCrackCount > 20 && mainConfig.pcCrackCount < 30){
-        ui.pcCrack.setTexture('keyboard', 'crack1').setOrigin(1);
+    if(mainConfig.pcCrackCount === 10) {
+        ui.pc.setTexture('minigame', 'pc1');
     }
-    else if(mainConfig.pcCrackCount > 30){
+    else if(mainConfig.pcCrackCount > 20 && mainConfig.pcCrackCount < 35){
+        ui.pc.setTexture('minigame', 'pc2');
+        ui.pcErr.y =ui.pcOff.y= 202;
+    }
+    else if(mainConfig.pcCrackCount > 35 && mainConfig.pcCrackCount < 60){
+        ui.pc.setTexture('minigame', 'pc3');
+        ui.pcErr.y =ui.pcOff.y= 210;
+    }
+    else if(mainConfig.pcCrackCount > 60){
         pcShutDown('break');
         return;
     }
@@ -1394,7 +1433,7 @@ function selectBridge(index, bridge) {
     if(index === mainConfig.bridgeAnswer[mainConfig.bridgeSelection]){
         // 생존
         jumpTo(livingSheep, bridge, function () {
-            ui.bridges[mainConfig.bridgeFail[mainConfig.bridgeSelection]].play('bridge');
+            ui.bridges[mainConfig.bridgeFail[mainConfig.bridgeSelection]].play('stone' + mainConfig.bridgeFail[mainConfig.bridgeSelection] + '-out');
             livingSheep.play('sheep-stand');
             nextSheep = mainObject.sheeps[mainConfig.bridgeSelection - mainConfig.livingSheep + 1];
             if(nextSheep !== undefined) {
@@ -1436,10 +1475,10 @@ function selectBridge(index, bridge) {
         // 실패
         jumpTo(livingSheep, bridge, function () {
             // livingSheep 점프 후 실패 후 제거
-            ui.bridges[mainConfig.bridgeFail[mainConfig.bridgeSelection]].play('bridge');
+            ui.bridges[mainConfig.bridgeFail[mainConfig.bridgeSelection]].play('stone' + mainConfig.bridgeFail[mainConfig.bridgeSelection] + '-out');
             mainConfig.livingSheep++;
             livingSheep.setGravityX(-600);
-            livingSheep.setVelocity(80, 80);
+            livingSheep.setVelocity(80, (mainConfig.bridgeSelection > 2) ? -40 : 60);
             livingSheep.play('sheep-dead');
             livingSheep.setFlipX(false);
             mainConfig.deadSheep.push(livingSheep);
@@ -1807,8 +1846,8 @@ function eventByIndex(){
                 mainConfig.lookAt.player = mainObject.man;
                 mainConfig.lookAt.man = mainObject.player;
                 mainConfig.lookAt.dom = mainObject.man;
-                moveToPoint('player', mainObject.man.x + 48, mainObject.man.y, true);
-                moveToPoint('dom', mainObject.man.x + 48, mainObject.man.y - 40, true);
+                moveToPoint('player', mainObject.man.x - 60, mainObject.man.y, true);
+                moveToPoint('dom', mainObject.man.x + 40, mainObject.man.y - 20, true);
                 if(!ui.dialogGroup.visible) {
                     ui.skip.setVisible(true);
                     ui.dialogGroup.setVisible(true);
@@ -1824,9 +1863,11 @@ function eventByIndex(){
             mainObject.man.play('man-talk');
         }
         else if (index === 12) {
+            // 양건너기 시작
             sheepStanby(mainObject.sheeps[0]);
             mainObject.man.play('man-stand');
             mainObject.man.setFlipX(true);
+            mainObject.player.setFlipX(true);
             ui.bridges.forEach(function (bridge) {
                 bridge.setInteractive();
             });
@@ -1922,7 +1963,6 @@ function eventByIndex(){
         }
         else if(index === 5){
             setTask(true);
-            ui.fishAction.setInteractive();
             ui.gameGroup.y = 600;
             ui.gameGroup.setVisible(true);
             scene.tweens.add({
