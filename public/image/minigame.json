@@ -51,8 +51,8 @@
   }
   ,
   {
-        "filename": "pc3",
-        "frame":  { "x": 240, "y" :171, "w" :144, "h" :171 },
+        "filename": "pc0",
+        "frame":  { "x": 0, "y" :0, "w" :144, "h" :171 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :144, "h" :171 },
@@ -61,12 +61,32 @@
   }
   ,
   {
-        "filename": "pc0",
-        "frame":  { "x": 0, "y" :0, "w" :144, "h" :171 },
+        "filename": "pc3",
+        "frame":  { "x": 432, "y" :0, "w" :144, "h" :171 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :144, "h" :171 },
         "sourceSize": { "w" :144, "h" :171 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "gamble0",
+        "frame":  { "x": 240, "y" :320, "w" :120, "h" :226 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :120, "h" :226 },
+        "sourceSize": { "w" :120, "h" :226 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "gamble1",
+        "frame":  { "x": 360, "y" :320, "w" :120, "h" :226 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :120, "h" :226 },
+        "sourceSize": { "w" :120, "h" :226 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ]

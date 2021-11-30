@@ -499,7 +499,7 @@
    { "name": "player-stand", "from": 0, "to": 1, "direction": "forward" },
    { "name": "player-seek", "from": 2, "to": 3, "direction": "forward" },
    { "name": "player-run", "from": 4, "to": 7, "direction": "forward" , "frameRate": 8 },
-    { "name": "player-jump", "from": 4, "to": 5, "direction": "forward" , "frameRate": 8,  "repeat": null },
+    { "name": "player-jump", "from": 5, "to": 6, "direction": "forward" , "frameRate": 8,  "repeat": null },
    { "name": "dom-stand", "from": 8, "to": 9, "direction": "forward" },
    { "name": "dom-blink", "from": 10, "to": 11, "direction": "forward", "frameRate": 4 },
    { "name": "dom-talk", "from": 12, "to": 13, "direction": "forward", "frameRate": 4 },

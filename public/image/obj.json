@@ -69,5 +69,35 @@
         "sourceSize": { "w" :74, "h" :92 },
         "pivot":  { "x": 0, "y" :1 }
   }
+  ,
+  {
+        "filename": "gate",
+        "frame":  { "x": 0, "y" :190, "w" :106, "h" :90 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :106, "h" :90 },
+        "sourceSize": { "w" :106, "h" :90 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "platform",
+        "frame":  { "x": 112, "y" :190, "w" :22, "h" :18 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :22, "h" :18 },
+        "sourceSize": { "w" :22, "h" :18 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "arrow",
+        "frame":  { "x": 112, "y" :209, "w" :16, "h" :20 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :20 },
+        "sourceSize": { "w" :16, "h" :20 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
   ]
 }
