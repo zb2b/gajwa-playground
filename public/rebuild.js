@@ -45,7 +45,7 @@ const moveTargets = {
     engineer: {x: 0, y: 0}
 };
 const mainConfig = {
-    debugMode : false,
+    debugMode : true,
     debugModeChapter: 0,
 
     playerMovable : false,
@@ -103,7 +103,13 @@ const mainConfig = {
     fishRun: 0,
     retryFishing: 0,
 
-    gambleSelection: 2
+    gambleSelection: 2,
+    gambleFirst: null,
+    gambleOpenHint: null,
+    startGamble: false,
+    totalSeed: 0,
+
+    minigameTween: null
 }
 const timer = {};
 const event = {};
@@ -133,13 +139,13 @@ function preload() {
     this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
     // UI
     this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
-    this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 5 });
+    this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 6 });
     this.load.atlas('minigame', 'image/minigame.png', 'image/minigame.json');
     this.load.spritesheet('pc-err', 'image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
     this.load.spritesheet('bridge', 'image/bridge.png', { frameWidth: 32, frameHeight: 32, endFrame: 9 });
     this.load.spritesheet('float-water', 'image/float-water.png', { frameWidth: 64, frameHeight: 32, endFrame: 18 });
     this.load.spritesheet('fish-icon', 'image/fish-icon.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
-    this.load.spritesheet('doors', 'image/doors.png', { frameWidth: 35, frameHeight: 48, endFrame: 8 });
+    this.load.spritesheet('doors', 'image/doors.png', { frameWidth: 35, frameHeight: 48, endFrame: 16 });
     this.load.atlas('keyboard', 'image/keyboard.png', 'image/keyboard.json');
     this.load.atlas('ui', 'image/ui.png', 'image/ui.json');
     // plugins
@@ -384,15 +390,12 @@ function update() {
 function buildMap(scene) {
     // 타일맵 생성 <br>
     // 네비메쉬 : maps.navMesh <br>
-    // 벽 레이어 : maps.wallLayer
     maps.tilemap = scene.add.tilemap("map");
     maps.tileset = maps.tilemap.addTilesetImage("tileset", "tileset");
     maps.tilemap.createLayer("bg", maps.tileset);
-    maps.wallLayer = [];
     maps.objectLayer = [];
 
-    for (let i = 0; i < 5; i++) {
-        maps.wallLayer[i] = maps.tilemap.createLayer("display" + i, maps.tileset).setVisible(false);
+    for (let i = 0; i < 6; i++) {
         maps.objectLayer[i] = maps.tilemap.getObjectLayer(i.toString());
     }
     maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[0], 12.5);
@@ -801,11 +804,22 @@ function createUIObjects(scene) {
             mainConfig.fishCasting = null;
         }
     }
-    // 몬티홀 생성
+    // TODO 몬티홀 생성
+    ui.gamblePos = scene.add.rectangle(display.centerW, display.centerH + 80, display.width, 40, 0x000000).setVisible(false);
+    scene.physics.add.existing(ui.gamblePos, true);
     ui.gamble = scene.add.sprite(0, display.height).play('gamble').setScale(3);
-    ui.gambler = scene.add.sprite(6, 387).play('gambler-show').setScale(3).setOrigin(0).setInteractive();
+    ui.gambler = scene.add.sprite(6, 387).play('gambler-stand').setScale(3).setOrigin(0).setInteractive();
     ui.gambler.on('pointerup', function () {
-        console.log('quit?')
+        // 겜블 포기 요청
+        if(mainConfig.startGamble){
+            status.index = 18;
+            if(!ui.dialogGroup.visible) {
+                ui.skip.setVisible(true);
+                ui.dialogGroup.setVisible(true);
+            }
+            dialog();
+            ui.gambler.play('gambler-talk');
+        }
     });
     ui.doors = scene.add.container();
     ui.doorlist = [];
@@ -813,35 +827,84 @@ function createUIObjects(scene) {
         const x = [15, 129, 237]
         ui.doorlist[i] = scene.add.sprite(x[i], 179).play('door-off').setScale(3).setOrigin(0);
     }
-    ui.doorlist[mainConfig.gambleSelection].play('door-on');
     ui.doors.add(ui.doorlist);
     ui.gambleBtns = scene.add.container();
     ui.gambleBtn = {};
     ui.gambleBtn.left = scene.add.sprite(display.centerW - 96, 580, 'ui', 'left-on').setScale(3).setInteractive();
     ui.gambleBtn.select = scene.add.sprite(display.centerW, 580, 'ui', 'select-on').setScale(3).setInteractive();
     ui.gambleBtn.right = scene.add.sprite(display.centerW + 96, 580, 'ui', 'right-on').setScale(3).setInteractive();
-    ui.gambleHand = scene.add.sprite(ui.doorlist[mainConfig.gambleSelection].x + 6, 470).play('hand').setOrigin(0).setScale(3);
+    ui.gambleHand = scene.add.sprite(ui.doorlist[mainConfig.gambleSelection].x + 6, 470).play('hand').setOrigin(0).setScale(3).setVisible(false);
+
+    ui.gambleResult = [];
+    ui.gambleResult[0] = scene.add.sprite(ui.doorlist[0].x + 21, 321).play('fakesheep').setScale(3).setVisible(false);
+    ui.gambleResult[1] = scene.add.sprite(ui.doorlist[1].x + 21, 321).play('double').setScale(3).setVisible(false);
+    ui.gambleResult[2] = scene.add.sprite(ui.doorlist[2].x + 21, 321).play('fakesheep').setScale(3).setVisible(false);
+
     for (const [key, value] of Object.entries(ui.gambleBtn)) {
         value.on('pointerdown', function () {
+            if(!mainConfig.startGamble) return;
             this.setTexture('ui', key + '-off');
         });
         value.on('pointerup', function () {
+            if(!mainConfig.startGamble) return;
             this.setTexture('ui', key + '-on');
-            for (let i = 0; i < 3; i++) {
-                ui.doorlist[i].play('door-off');
-            }
             if(key === 'left'){
+                if(mainConfig.gambleSelection === 1 && mainConfig.gambleOpenHint === 0) return;
                 if(mainConfig.gambleSelection > 0) mainConfig.gambleSelection--;
                 ui.gambleHand.x = ui.doorlist[mainConfig.gambleSelection].x + 6;
-                ui.doorlist[mainConfig.gambleSelection].play('door-on');
             }
             else if(key === 'select'){
-
+                // 첫 선택
+                if(mainConfig.gambleOpenHint === null){
+                    mainConfig.gambleFirst = mainConfig.gambleSelection;
+                    mainConfig.startGamble = false;
+                    ui.doorlist[mainConfig.gambleSelection].play('door-on');
+                    const num = ["첫 번째 ", "두 번째 ", "세 번째 "];
+                    status.index = 24;
+                    line.story[4][24] = "[몬티 홀스]\n오 마이 갓!!!\n" + num[mainConfig.gambleSelection] + "문을 고르셨습니다!!\n신중하게 고르신거겠지요~?";
+                    if(!ui.dialogGroup.visible) {
+                        ui.skip.setVisible(true);
+                        ui.dialogGroup.setVisible(true);
+                    }
+                    dialog();
+                }
+                else {
+                    mainConfig.startGamble = false;
+                    setTask(false);
+                    ui.gambler.play('gambler-show');
+                    if(mainConfig.gambleFirst === mainConfig.gambleSelection){
+                        // 선택 유지
+                        line.story[4][32] = "[몬티 홀스]\n골랐습니다! 뚝심있는 분이시군요!\n처음 고른 문이 역시 믿을만하죠?";
+                    }
+                    else {
+                        // 선택 바꿈
+                        ui.doorlist[mainConfig.gambleFirst].play('door-off');
+                        ui.doorlist[mainConfig.gambleSelection].play('door-on');
+                        line.story[4][32] = "[몬티 홀스]\n오! 정말입니까? 이분! 선택을 바꾸고\n새로운 문을 고르셨습니다!!\n이제는 되돌릴 수 없는 선택!";
+                    }
+                    if(mainConfig.gambleSelection === 1){
+                        // 성공
+                        line.story[4][35] = "[몬티 홀스]\n당첨입니다!!! 정말 놀랍습니다!"
+                        line.story[4][36] = "[몬티 홀스]\n약속한대로 씨앗을 두배로 만들어\n드리겠습니다!! 축하드립니다!\n잘 가세요!"
+                    }
+                    else {
+                        // 실패
+                        line.story[4][35] = "[몬티 홀스]\n안타깝게도.. 꽝입니다!!!\n정말 유감이네요!"
+                        line.story[4][36] = "[몬티 홀스]\n약속한대로 씨앗의 절반은 제가...\n하하 그럼 이만! 잘 가세요!"
+                    }
+                    if(!ui.dialogGroup.visible) {
+                        ui.skip.setVisible(true);
+                        ui.dialogGroup.setVisible(true);
+                    }
+                    dialog();
+                }
             }
             else if(key === 'right'){
-                if(mainConfig.gambleSelection < 2) mainConfig.gambleSelection++;
+                if(mainConfig.gambleSelection === 1 && mainConfig.gambleOpenHint === 2) return;
+                if(mainConfig.gambleSelection < 2) {
+                    mainConfig.gambleSelection++;
+                }
                 ui.gambleHand.x = ui.doorlist[mainConfig.gambleSelection].x + 6;
-                ui.doorlist[mainConfig.gambleSelection].play('door-on');
             }
         });
         value.on('pointerout', function () {
@@ -855,7 +918,8 @@ function createUIObjects(scene) {
     ui.gameScene[0] = scene.add.container().add([ui.pcKeyboard, ui.pc, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff, ui.pcBreak]);
     ui.gameScene[1] = scene.add.container();
     ui.gameScene[2] = scene.add.container().add([ui.fishing, ui.fishingFloat, ui.fishingPlayer, ui.fishingCastGroup, ui.fishingEffect, ui.fishingGroup, ui.fishingBtn]);
-    ui.gameScene[3] = scene.add.container().add([ui.gamble, ui.doors, ui.gambler, ui.gambleBtns, ui.gambleHand]);
+    ui.gameScene[3] = scene.add.container().add([ui.gamble, ui.doors, ui.gambleResult[0], ui.gambleResult[1], ui.gambleResult[2], ui.gambler, ui.gambleBtns, ui.gambleHand]);
+    ui.gameScene[4] = scene.add.container();
     ui.bridge = scene.add.container().setVisible(false);
     ui.bridges.forEach(function (bridge, index) {
         ui.bridge.add(bridge);
@@ -981,10 +1045,7 @@ function setLayer(scene) {
     mainObject.layer = scene.add.layer();
 
     mainObject.bg = scene.add.container();
-    mainObject.bg.add([ui.bg, ui.smoke, ui.next, ui.bridge]);
-    for (let i = 0; i < maps.wallLayer.length; i++) {
-        mainObject.bg.add(maps.wallLayer[i]);
-    }
+    mainObject.bg.add([ui.bg, ui.smoke, ui.next, ui.bridge, ui.gamblePos]);
 
     mainObject.group = scene.add.container();
     mainObject.group.add([mainObject.player, mainObject.dom, mainObject.engineer, mainObject.man, mainObject.fishman, mainObject.gambler]);
@@ -1059,6 +1120,11 @@ function setAnimations(scene) {
     scene.anims.create({
         key: 'bg4',
         frames: scene.anims.generateFrameNumbers('bg', { start: 5, end: 5 }),
+        frameRate: 1,
+    });
+    scene.anims.create({
+        key: 'bg5',
+        frames: scene.anims.generateFrameNumbers('bg', { start: 6, end: 6 }),
         frameRate: 1,
     });
     scene.anims.create({
@@ -1155,7 +1221,12 @@ function setAnimations(scene) {
     scene.anims.create({
         key: 'door-open',
         frames: scene.anims.generateFrameNumbers('doors', { start: 1, end: 8 }),
-        frameRate: 12,
+        frameRate: 16,
+    });
+    scene.anims.create({
+        key: 'door-hint-open',
+        frames: scene.anims.generateFrameNumbers('doors', { start: 9, end: 15 }),
+        frameRate: 16,
     });
     scene.anims.create({
         key: 'hand',
@@ -1163,6 +1234,24 @@ function setAnimations(scene) {
         repeat: -1,
         frames: scene.anims.generateFrameNames('ui', {
             prefix: 'hand',
+            end: 1
+        })
+    });
+    scene.anims.create({
+        key: 'fakesheep',
+        frameRate: 2,
+        repeat: -1,
+        frames: scene.anims.generateFrameNames('ui', {
+            prefix: 'fakesheep',
+            end: 1
+        })
+    });
+    scene.anims.create({
+        key: 'double',
+        frameRate: 2,
+        repeat: -1,
+        frames: scene.anims.generateFrameNames('ui', {
+            prefix: 'double',
             end: 1
         })
     });
@@ -1481,11 +1570,11 @@ function pcShutDown(way) {
         .set('break', "[폰 왈도 노이만 3세]\n아니..커..컴퓨터가..\n과격한 친구로군.. 어쨋든 오작동은\n멈췄으니.. 성공했다고 봐야겠어.");
     const reward = new Map();
     // 씨앗 리워드 결정
-    reward.set('1234', 3)
-        .set('0000', 4)
-        .set('power', 5)
-        .set('danger', 1)
-        .set('break', 2);
+    reward.set('1234', 8)
+        .set('0000', 2)
+        .set('power', 10)
+        .set('danger', 2)
+        .set('break', 5);
     mainConfig.reward[0] = reward.get(way);
     line.story[1][14] = newline.get(way);
     let scene = game.scene.scenes[0];
@@ -1873,7 +1962,7 @@ function sheepFinish() {
     line.story[status.chapterIdx][16] = newLine[16];
     line.story[status.chapterIdx][17] = newLine[17];
 
-    mainConfig.reward[1] = 6-dead;
+    mainConfig.reward[1] = (6-dead) * 2;
 
     ui.skip.setVisible(true);
     ui.dialogGroup.setVisible(true);
@@ -2251,7 +2340,6 @@ function eventByIndex(){
             mainObject.dom.play('dom-talk');
         }
         else if(index === 14){
-            // 다음 스테이지로
             setTask(true);
             moveEnable();
             let col = scene.physics.add.overlap(mainObject.player, mainObject.fishman, function () {
@@ -2315,17 +2403,228 @@ function eventByIndex(){
     }
     else if(chapter === 4) {
         if (index === 2) {
+            //gamble(true);
+            //ui.doorlist[0].play('door-hint-open');
             setTask(true);
             moveEnable();
-
-            ui.gameGroup.y = 600;
-            ui.gameGroup.setVisible(true);
-            scene.tweens.add({
-                targets: ui.gameGroup,
-                y: 0,
-                duration: 2000,
-                ease: Phaser.Math.Easing.Quintic.Out,
+            let col = scene.physics.add.overlap(mainObject.player, ui.gamblePos, function () {
+                col.active = false;
+                setTask(false);
+                mainObject.gambler.play('gambler-talk');
+                mainConfig.playerMovable = false;
+                mainConfig.domFollow = false;
+                mainConfig.lookAt.player = mainObject.gambler;
+                mainConfig.lookAt.dom = mainObject.gambler;
+                moveToPoint('player', mainObject.player.x, mainObject.player.y - 20, false);
+                moveToPoint('dom', mainObject.dom.x, mainObject.dom.y - 20, false);
+                if(!ui.dialogGroup.visible) {
+                    ui.skip.setVisible(true);
+                    ui.dialogGroup.setVisible(true);
+                }
+                dialog();
+            }, null, this);
+        }
+        else if(index === 7) {
+            setTask(true);
+            finishChapter({x: display.centerW, y: display.height + 180});
+            moveEnable();
+            mainObject.gambler.play('gambler-stand');
+            ui.gamblePos.body.setSize(60, 60).setOffset(72, -136);
+            ui.gamblePos.setSize(60, 60).setOrigin(0.5);
+            ui.gamblePos.setPosition(mainObject.gambler.x, mainObject.gambler.y);
+            let col = scene.physics.add.overlap(mainObject.player, ui.gamblePos, function () {
+                col.active = false;
+                mainObject.gambler.play('gambler-talk');
+                mainConfig.playerMovable = false;
+                mainConfig.domFollow = false;
+                mainConfig.lookAt.player = mainObject.gambler;
+                mainConfig.lookAt.dom = mainObject.gambler;
+                moveToPoint('player', mainObject.gambler.x + 60, mainObject.gambler.y + 20, false);
+                moveToPoint('dom', mainObject.gambler.x + 80, mainObject.gambler.y + 40, false);
+                if(!ui.dialogGroup.visible) {
+                    ui.skip.setVisible(true);
+                    ui.dialogGroup.setVisible(true);
+                }
+                dialog();
+                setTask(false);
+            }, null, this);
+        }
+        else if(index === 9){
+            mainObject.gambler.play('gambler-stand');
+            mainObject.dom.play('dom-talk');
+        }
+        else if(index === 10) {
+            mainObject.dom.play('dom-stand');
+            gamble(true);
+        }
+        else if(index === 13){
+            line.story[4][14] = "[몬티 홀스]\n지금 갖고있는 씨앗이.. 음..\n모두 합쳐서 " + mainConfig.seedNum + "개 정도 되니까..\n두배면...와우!";
+        }
+        else if(index === 17) {
+            // 겜블 시작
+            ui.gambleHand.setVisible(true);
+            mainConfig.startGamble = true;
+            ui.gambler.play('gambler-stand');
+            setTask(true);
+        }
+        else if(index === 19) {
+            // 겜블 포기
+            mainConfig.startGamble = false;
+            ui.gambler.play('gambler-stand');
+            setTask(false);
+            gamble(false);
+        }
+        else if(index === 21){
+            // 겜블 재시작
+            gamble(true);
+            mainObject.gambler.play('gambler-stand');
+        }
+        else if(index === 23){
+            // 겜블 재시작
+            ui.gambleHand.setVisible(true);
+            mainConfig.startGamble = true;
+            ui.gambler.play('gambler-stand');
+            status.taskIdx = 2;
+            setTask(true);
+        }
+        else if(index === 26){
+            ui.gambler.play('gambler-talk');
+            function openSheep(door) {
+                ui.doorlist[door].play('door-hint-open');
+                ui.doorlist[door].on('animationcomplete', function (a) {
+                    if(a.key === 'door-hint-open'){
+                        setTimeout(function () {
+                            ui.gambleResult[door].setVisible(true);
+                            if(!ui.dialogGroup.visible) {
+                                ui.skip.setVisible(true);
+                                ui.dialogGroup.setVisible(true);
+                            }
+                            dialog();
+                        }, 400);
+                    }
+                });
+            }
+            // 다른패 보여주기
+            if(mainConfig.gambleSelection === 0){
+                mainConfig.gambleOpenHint = 2;
+                openSheep(2);
+            }
+            else if(mainConfig.gambleSelection === 1){
+                let open = (Math.random() > 0.5) ? 0 : 2;
+                mainConfig.gambleOpenHint = open;
+                openSheep(open);
+            }
+            else if(mainConfig.gambleSelection === 2){
+                mainConfig.gambleOpenHint = 0;
+                openSheep(0);
+            }
+        }
+        else if(index === 31){
+            mainConfig.startGamble = true;
+            ui.gambler.play('gambler-stand');
+        }
+        else if(index === 34){
+            ui.doorlist[mainConfig.gambleSelection].play('door-open');
+            ui.doorlist[mainConfig.gambleSelection].on('animationcomplete', function (a) {
+                setTimeout(function () {
+                    // 몬티홀 완료
+                    ui.gambleResult[mainConfig.gambleSelection].setVisible(true);
+                    if(!ui.dialogGroup.visible) {
+                        ui.skip.setVisible(true);
+                        ui.dialogGroup.setVisible(true);
+                    }
+                    ui.gambler.play('gambler-talk');
+                    dialog();
+                }, 400);
             });
+        }
+        else if(index === 37){
+            ui.gambler.play('gambler-stand');
+            mainConfig.clear[3] = true;
+            setTimeout(function (){
+                scene.tweens.add({
+                    targets: ui.gameGroup,
+                    y: -860,
+                    duration: 2000,
+                    ease: Phaser.Math.Easing.Quintic.In,
+                    onComplete: function () {
+                        if(mainConfig.gambleSelection === 1){
+                            setReward(true, mainConfig.seedNum);
+                            mainConfig.reward[3] = mainConfig.seedNum;
+                        }
+                        else {
+                            let count = Math.floor(mainConfig.seedNum * 0.5);
+                            setTimeout(() => ui.skip.setVisible(true), 400);
+                            ui.rewardGroup.setVisible(true);
+                            ui.rewardMsg.text = '씨앗을 ' + count + '개 잃었다!'
+                            mainConfig.seedNum += count;
+                            mainConfig.reward[3] = -count;
+                        }
+                    }
+                })
+            }, 200);
+        }
+        else if(index === 39){
+            setTask(true);
+            mainObject.gambler.play('gambler-show');
+            moveEnable();
+        }
+        function gamble(start) {
+            if(start){
+                ui.gameGroup.y = 600;
+                ui.gameGroup.setVisible(true);
+                scene.tweens.add({
+                    targets: ui.gameGroup,
+                    y: 0,
+                    duration: 2000,
+                    ease: Phaser.Math.Easing.Quintic.Out,
+                    onComplete: function () {
+                        ui.skip.setVisible(true);
+                        ui.dialogGroup.setVisible(true);
+                        dialog();
+                        ui.gambler.play('gambler-talk');
+                    }
+                });
+            }
+            else {
+                setTimeout(function (){
+                    scene.tweens.add({
+                        targets: ui.gameGroup,
+                        y: -860,
+                        duration: 2000,
+                        ease: Phaser.Math.Easing.Quintic.In,
+                        onComplete: function () {
+                            if(mainConfig.clear[3]){
+                                status.index = 20;
+                                dialog();
+                            }
+                            else {
+                                ui.gambleHand.setVisible(false);
+                                moveEnable();
+                                let col = scene.physics.add.overlap(mainObject.player, ui.gamblePos, function () {
+                                    col.active = false;
+                                    mainObject.gambler.play('gambler-talk');
+                                    mainConfig.playerMovable = false;
+                                    mainConfig.domFollow = false;
+                                    mainConfig.lookAt.player = mainObject.gambler;
+                                    mainConfig.lookAt.dom = mainObject.gambler;
+                                    moveToPoint('player', mainObject.gambler.x + 60, mainObject.gambler.y + 20, false);
+                                    moveToPoint('dom', mainObject.gambler.x + 80, mainObject.gambler.y + 40, false);
+                                    if(!ui.dialogGroup.visible) {
+                                        ui.skip.setVisible(true);
+                                        ui.dialogGroup.setVisible(true);
+                                    }
+                                    dialog();
+                                    setTask(false);
+                                }, null, this);
+                            }
+                            ui.gambler.play('gambler-stand');
+                            status.taskIdx = 3;
+                            setTask(true);
+                        }
+                    });
+                }, 200);
+            }
         }
     }
 }
@@ -2410,10 +2709,6 @@ function moveFinished(character) {
 }
 function setBackground(idx) {
     ui.bg.play('bg' + idx);
-    for (let i = 0; i < maps.wallLayer.length; i++) {
-        maps.wallLayer[i].setVisible(false);
-    }
-    maps.wallLayer[idx].setVisible(true);
 }
 // TODO 씬 제어
 function chapterTitle(skip) {
@@ -2590,6 +2885,28 @@ function chapterTitle(skip) {
             mainObject.player.y = mainObject.dom.y = 80;
             moveToPoint('player', 120, 100, false);
             moveToPoint('dom', 80, 100, false);
+            mainConfig.moveFinishedEvent.player = function () {
+                mainConfig.lookAt.player = mainObject.dom;
+                mainConfig.lookAt.dom = mainObject.player;
+                if(!ui.dialogGroup.visible) {
+                    ui.skip.setVisible(true);
+                    ui.dialogGroup.setVisible(true);
+                }
+                dialog();
+            }
+            mainConfig.moveFinishedEvent.dom = function () {
+                mainObject.dom.play('dom-talk');
+            }
+        }
+        else if(chapterIdx === 5){
+            maps.navMesh.destroy();
+            setVisibleObjects(false, [ui.skip, mainObject.gambler, object.list[5], object.list[6]]);
+            maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[5], 12.5);
+            mainObject.player.x = display.centerW + 20;
+            mainObject.dom.x = display.centerW - 20;
+            mainObject.player.y = mainObject.dom.y = -80;
+            moveToPoint('player', display.centerW + 20, 100, false);
+            moveToPoint('dom', display.centerW - 20, 100, false);
             mainConfig.moveFinishedEvent.player = function () {
                 mainConfig.lookAt.player = mainObject.dom;
                 mainConfig.lookAt.dom = mainObject.player;
