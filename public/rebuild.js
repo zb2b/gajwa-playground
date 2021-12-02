@@ -1,7 +1,10 @@
 console.log("%c@ MYZY.SPACE 2021 POWERED BY MYZY_", "color: #00ff00; font-weight: 900; font-size: 1em; background-color: black; padding: 1rem");
+import { PhaserNavMeshPlugin } from "phaser-navmesh";
+
 const font = new FontFaceObserver('dgm').load();
 const display = {width : 360, height: 680, centerW : 180, centerH: 340 };
 const fontConfig = {font: '32px "dgm"', color: '#fff'};
+
 const config = {
     type: Phaser.AUTO,
     width: display.width,
@@ -46,7 +49,7 @@ const moveTargets = {
 };
 const mainConfig = {
     debugMode : true,
-    debugModeChapter: 0,
+    debugModeChapter: 4,
 
     playerMovable : false,
     domFollow: false,
@@ -64,6 +67,8 @@ const mainConfig = {
     pcTimerPushed : false,
     pcTimer : 0,
     pcCrackCount : 0,
+    pcRecordOn: false,
+    pcRecord: [],
     clear : [false, false, false, false, false],
     reward: [0, 0, 0, 0, 0],
     livingSheep: 0,
@@ -107,9 +112,9 @@ const mainConfig = {
     gambleFirst: null,
     gambleOpenHint: null,
     startGamble: false,
-    totalSeed: 0,
 
-    minigameTween: null
+    minigameTween: null,
+    signalTween: null
 }
 const timer = {};
 const event = {};
@@ -135,14 +140,14 @@ function preload() {
     this.load.aseprite('character', 'image/characters.png', 'image/characters.json');
     this.load.aseprite('fishing-player', 'image/fishing-player.png', 'image/fishing-player.json');
     this.load.aseprite('stones', 'image/stones.png', 'image/stones.json');
-    this.load.image("fish-player", "image/fishchar.png");
     this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
+
     // UI
+    this.load.spritesheet('signal', 'image/signal.png', { frameWidth: 16, frameHeight: 16, endFrame: 12 });
     this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
     this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 6 });
     this.load.atlas('minigame', 'image/minigame.png', 'image/minigame.json');
     this.load.spritesheet('pc-err', 'image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
-    this.load.spritesheet('bridge', 'image/bridge.png', { frameWidth: 32, frameHeight: 32, endFrame: 9 });
     this.load.spritesheet('float-water', 'image/float-water.png', { frameWidth: 64, frameHeight: 32, endFrame: 18 });
     this.load.spritesheet('fish-icon', 'image/fish-icon.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
     this.load.spritesheet('doors', 'image/doors.png', { frameWidth: 35, frameHeight: 48, endFrame: 16 });
@@ -168,10 +173,21 @@ function create() {
     createGraphics(this);
     createCharacters(this);
     createUIObjects(this);
+    createSignal(this);
     createObjects(this);
     createParticles(this);
     buildMap(this);
     setLayer(this);
+    this.input.on('pointerdown', pointer => {
+        if(status.chapterIdx === 1 && mainConfig.pcRecordOn){
+            // 컴퓨터 게임 기록
+            if(mainConfig.pcRecord.length > 19){
+                mainConfig.pcRecord.shift();
+            }
+            let pos = {x: pointer.x, y: pointer.y};
+            mainConfig.pcRecord.push(pos);
+        }
+    });
     this.input.on('pointerup', pointer => {
         if(!mainConfig.playerMovable) return;
         mainConfig.pathCount.player = 1;
@@ -207,9 +223,15 @@ function create() {
         if(path.get('player').length < 1) return;
         moveCharacter('player');
     });
-    this.input.keyboard.addKey('Q').on('down', function(event) {
+    this.input.keyboard.addKey('R').on('down', function(event) {
         console.log('Reset');
         resetGame(resetConfig);
+    })
+    this.input.keyboard.addKey('Z').on('down', function(event) {
+        console.log(mainConfig.pcRecord);
+    })
+    this.input.keyboard.addKey('X').on('down', function(event) {
+        console.log(ui.gameGroup.visible);
     })
 }
 function resetGame(resetConfig) {
@@ -896,7 +918,10 @@ function createUIObjects(scene) {
                         ui.skip.setVisible(true);
                         ui.dialogGroup.setVisible(true);
                     }
+                    signalToggle(false);
+                    gambleCounter(mainConfig.gambleSelection);
                     dialog();
+                    writeUserData();
                 }
             }
             else if(key === 'right'){
@@ -912,6 +937,38 @@ function createUIObjects(scene) {
         });
     }
     ui.gambleBtns.add([ui.gambleBtn.left, ui.gambleBtn.select, ui.gambleBtn.right]);
+
+    let signalHelpBool = true;
+    ui.signalHelpBox = scene.add.rectangle(0, 0, display.width, display.height, 0x000000, 0.85).setOrigin(0);
+    let helpText = '[흔적 감지하기]\n\n당신은 다른 시공간의 존재이기 때문에\n다른 세계의 흔적을 감지할 수 있는\n특별한 능력이 있습니다.' +
+        '\n\n누군가의 흔적을 통해 상황을 추측할 수 있으며\n이 능력을 사용할 수 있는 상황이 되면\n이 아이콘이 나타납니다.';
+    ui.signalHelp = scene.add.text(display.centerW, display.centerH, helpText, fontConfig)
+        .setAlign('center').setOrigin(0.5).setFontSize(16).setLineSpacing(8);
+    ui.signalHelpGroup = scene.add.container().add([ui.signalHelpBox, ui.signalHelp]);
+    ui.signalBtn = scene.add.sprite(display.centerW ,display.height + 90, 'ui', 'signal-on').setOrigin(0.5, 1).setScale(3).setInteractive();
+
+    ui.signalHelpBox.on('pointerup', function () {
+        ui.signalHelpGroup.setVisible(false);
+        signalHelpBool = false;
+    });
+    ui.signalBtn.on('pointerdown', function () {
+        this.setTexture('ui', 'signal-off').setOrigin(0.5, 1).setScale(3);
+    }).on('pointerout', function () {
+        this.setTexture('ui', 'signal-on').setOrigin(0.5, 1).setScale(3);
+    }).on('pointerup', function () {
+        this.setTexture('ui', 'signal-on').setOrigin(0.5, 1).setScale(3);
+        if(signalHelpBool) {
+            ui.group.add(ui.signalHelpGroup);
+            setTimeout(function (){
+                ui.signalHelpBox.setInteractive();
+            }, 200);
+        }
+        else {
+            ui.signalBtn.disableInteractive();
+            const level = {1: 'engineer', 2: 'sheep', 4: 'gambler' };
+            readData(level[status.chapterIdx]);
+        }
+    });
 
     // 스테이지 별 미니게임 씬 오브젝트 추가
     ui.gameScene = [];
@@ -971,6 +1028,15 @@ function createUIObjects(scene) {
 
     ui.skip.on('pointerup', function () {
         skip();
+    });
+}
+function createSignal(scene) {
+    // 시그널 효과 생성
+    ui.signal = scene.physics.add.group({
+        visible: false,
+        active: false,
+        frameQuantity: 20,
+        maxSize: 20
     });
 }
 function setTask(visible) {
@@ -1055,7 +1121,7 @@ function setLayer(scene) {
     }
 
     ui.group = scene.add.container();
-    ui.group.add([ui.background, ui.mark, ui.gameGroup, ui.dialogGroup, ui.rewardGroup, ui.taskGroup, ui.largeText, ui.white, ui.title, ui.dark, ui.skip]);
+    ui.group.add([ui.background, ui.mark, ui.gameGroup, ui.signalBtn, ui.dialogGroup, ui.rewardGroup, ui.taskGroup, ui.largeText, ui.white, ui.title, ui.dark, ui.skip]);
 
     // 레이어 정렬
     mainObject.layer.add(mainObject.bg);
@@ -1069,6 +1135,11 @@ function setLayer(scene) {
 function setAnimations(scene) {
     // TODO 애니메이션 추가
     scene.anims.create({
+        key: 'signal',
+        frames: scene.anims.generateFrameNumbers('signal', { start: 0, end: 12 }),
+        frameRate: 12,
+    });
+    scene.anims.create({
         key: 'mark',
         frames: scene.anims.generateFrameNumbers('mark', { start: 0, end: 1, first: 0 }),
         frameRate: 2,
@@ -1079,11 +1150,6 @@ function setAnimations(scene) {
         frames: scene.anims.generateFrameNumbers('pc-err', { start: 0, end: 5, first: 0 }),
         frameRate: 24,
         repeat: -1
-    });
-    scene.anims.create({
-        key: 'bridge',
-        frames: scene.anims.generateFrameNumbers('bridge', { start: 0, end: 9, first: 0 }),
-        frameRate: 24
     });
     scene.anims.create({
         key: 'float-water',
@@ -1170,7 +1236,7 @@ function setAnimations(scene) {
         frameRate: 2,
         frames: scene.anims.generateFrameNames('minigame', {
             prefix: 'fishing',
-            end: 2
+            end: 1
         })
     });
     scene.anims.create({
@@ -1179,7 +1245,7 @@ function setAnimations(scene) {
         frameRate: 2,
         frames: scene.anims.generateFrameNames('minigame', {
             prefix: 'gamble',
-            end: 2
+            end: 1
         })
     });
     scene.anims.create({
@@ -1267,6 +1333,34 @@ function setLines(scene) {
 
 // TODO 동작 메서드
 const lerp = (x, y, a) => x * (1 - a) + y * a;
+function signalToggle(visible) {
+    let scene = game.scene.scenes[0];
+    mainConfig.signalTween?.stop();
+    if(visible){
+        ui.signalBtn.setVisible(true);
+        ui.signalBtn.y = display.height + 90;
+        mainConfig.signalTween = scene.tweens.add({
+            targets: ui.signalBtn,
+            y: display.height + 18,
+            duration: 800,
+            ease: Phaser.Math.Easing.Quintic.Out,
+            onComplete: function () {
+
+            }
+        });
+    }
+    else {
+        mainConfig.signalTween = game.scene.scenes[0].tweens.add({
+            targets: ui.signalBtn,
+            y: display.height + 60,
+            duration: 800,
+            ease: Phaser.Math.Easing.Quintic.In,
+            onComplete: function (){
+                ui.signalBtn.setVisible(false);
+            }
+        });
+    }
+}
 function Move(character, target, speed) {
     game.scene.scenes[0].physics.moveToObject(character, target, speed);
 }
@@ -1561,6 +1655,11 @@ function keyboardAction(key) {
     }
 }
 function pcShutDown(way) {
+    signalToggle(false);
+    mainConfig.pcRecordOn = false;
+    object.list[3].stop();
+    object.list[3].setTexture('obj' , (way === 'break') ? 'pc-broken' : 'pc-off').setOrigin(0, 1);
+
     // PC 미니게임 종료 후 결과에 따라 대사 변경
     const newline = new Map();
     newline.set('1234', "[폰 왈도 노이만 3세]\n어떻게 비밀번호를 알아냈지?!\n천재가 분명해! 자네..")
@@ -1576,6 +1675,9 @@ function pcShutDown(way) {
         .set('danger', 2)
         .set('break', 5);
     mainConfig.reward[0] = reward.get(way);
+    savedData.trace.engineer = {how: way, path: mainConfig.pcRecord};
+    writeUserData();
+
     line.story[1][14] = newline.get(way);
     let scene = game.scene.scenes[0];
     mainConfig.clear[0] = true;
@@ -1591,7 +1693,6 @@ function pcShutDown(way) {
             ui.pcOff.setFillStyle(Phaser.Display.Color.GetColor(value, value, value));
         },
         onComplete: function () {
-            console.log('pc shut down');
             setTask(false);
             scene.tweens.add({
                 targets: ui.gameGroup,
@@ -1620,6 +1721,11 @@ function setReward(bool, count) {
         mainConfig.seedNum += count;
     }
     else ui.rewardGroup.setVisible(false);
+    savedData.totalseed = mainConfig.seedNum;
+    for (let i = 0; i < mainConfig.reward.length; i++) {
+        savedData.seed[i] = mainConfig.reward[i];
+    }
+    writeUserData();
 }
 function setGameScenes() {
     // 챕터에 따라 미니게임 씬 정렬
@@ -1871,7 +1977,8 @@ function selectBridge(index, bridge) {
     function finishJump(success) {
         let count = (success) ? 4 : 3;
         if(mainConfig.bridgeSelection === 5){
-            // 퀘스트 완료
+            // 양 퀘스트 완료
+            signalToggle(false);
             let left = 0;
             f();
             function f() {
@@ -1968,6 +2075,30 @@ function sheepFinish() {
     ui.dialogGroup.setVisible(true);
     dialog();
 }
+function checkSignal(arr) {
+    // TODO 시그널
+    let count = 0;
+    blink();
+    function blink() {
+        let sign =  ui.signal.get();
+        if (!sign) return;
+        ui.effectGroup.add(sign);
+        sign.play('signal');
+        sign
+            .setOrigin(0.5)
+            .setScale(3)
+            .enableBody(true, arr[count].x, arr[count].y, true, true)
+        sign.on('animationcomplete', function (a) {
+            if(sign.x === arr[arr.length-1].x && sign.y === arr[arr.length-1].y) {
+                ui.signalBtn.setInteractive();
+            }
+            sign.destroy();
+        });
+        count++;
+        if(count < arr.length) setTimeout(blink, 100);
+    }
+}
+
 // TODO 이벤트 메서드
 function skip() {
     if(status.scene === 'title'){
@@ -2065,12 +2196,17 @@ function eventByIndex(){
             let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
                 col.active = false;
                 ui.mark.setVisible(false);
-                setVisibleObjects(true, [mainObject.dom, ui.skip, ui.dialogGroup]);
                 moveToPoint('player', mainObject.dom.x + 60, mainObject.dom.y, true);
                 mainConfig.lookAt.player = mainObject.dom;
                 mainConfig.lookAt.dom = mainObject.player;
-                dialog();
-                mainObject.dom.play('dom-talk');
+                mainObject.dom.setVisible(true).play('dom-out');
+                mainObject.dom.on('animationcomplete', function (a) {
+                    if(a.key === 'dom-out'){
+                        mainObject.dom.play('dom-talk');
+                        setVisibleObjects(true, [ui.skip, ui.dialogGroup]);
+                        dialog();
+                    }
+                });
                 setTask(false);
             }, null, this);
         }
@@ -2128,6 +2264,7 @@ function eventByIndex(){
             mainObject.engineer.play('engineer-talk');
         }
         else if (index === 13){
+            mainConfig.pcRecordOn = true;
             setTask(true);
             ui.gameGroup.y = 600;
             ui.gameGroup.setVisible(true);
@@ -2135,7 +2272,10 @@ function eventByIndex(){
                 targets: ui.gameGroup,
                 y: 0,
                 duration: 2000,
-                ease: Phaser.Math.Easing.Quintic.Out
+                ease: Phaser.Math.Easing.Quintic.Out,
+                onComplete: function () {
+                    signalToggle(true);
+                }
             });
         }
         else if (index === 16){
@@ -2215,6 +2355,7 @@ function eventByIndex(){
                 bridge.setInteractive();
             });
             setTask(true);
+            signalToggle(true);
         }
         else if (index === 13){
             mainObject.player.setFlipX(false);
@@ -2462,6 +2603,7 @@ function eventByIndex(){
         }
         else if(index === 17) {
             // 겜블 시작
+            signalToggle(true);
             ui.gambleHand.setVisible(true);
             mainConfig.startGamble = true;
             ui.gambler.play('gambler-stand');
@@ -2469,6 +2611,7 @@ function eventByIndex(){
         }
         else if(index === 19) {
             // 겜블 포기
+            signalToggle(false);
             mainConfig.startGamble = false;
             ui.gambler.play('gambler-stand');
             setTask(false);
@@ -2481,6 +2624,7 @@ function eventByIndex(){
         }
         else if(index === 23){
             // 겜블 재시작
+            signalToggle(true);
             ui.gambleHand.setVisible(true);
             mainConfig.startGamble = true;
             ui.gambler.play('gambler-stand');
@@ -2559,6 +2703,8 @@ function eventByIndex(){
                             ui.rewardMsg.text = '씨앗을 ' + count + '개 잃었다!'
                             mainConfig.seedNum += count;
                             mainConfig.reward[3] = -count;
+                            savedData.seed[3] = mainConfig.reward[3];
+                            writeUserData();
                         }
                     }
                 })
@@ -2655,7 +2801,6 @@ function finishChapter(pos, dir = 'down') {
     ui.next.setVisible(true);
     let col = scene.physics.add.overlap(mainObject.player, ui.next, function () {
         setTask(false);
-        console.log('to next stage');
         status.chapterIdx++;
         col.active = false;
         mainConfig.domFollow = false;
@@ -2701,6 +2846,7 @@ function moveFinished(character) {
         mainConfig.moveFinishedEvent[name] = null;
     }
     if(mainConfig.playerMovable) return;
+    let value;
     for(value in mainConfig.lookAt){
         if(mainConfig.lookAt[value] !== null) {
             mainObject[value].setFlipX(mainObject[value].x - mainConfig.lookAt[value].x > 0);
@@ -2920,5 +3066,178 @@ function chapterTitle(skip) {
                 mainObject.dom.play('dom-talk');
             }
         }
+        for (let i = 0; i < mainConfig.clear.length; i++) {
+            savedData.clear[i] = mainConfig.clear[i];
+        }
+        writeUserData();
     }
+}
+
+// TODO 통신 제어
+const firebaseConfig = {
+    apiKey: "AIzaSyC3DxEONfmGK_m2KXrc1kPxr8Tb-PPD2so",
+    authDomain: "shadeofmyzy.firebaseapp.com",
+    databaseURL: "https://shadeofmyzy-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "shadeofmyzy",
+    storageBucket: "shadeofmyzy.appspot.com",
+    messagingSenderId: "998415412293",
+    appId: "1:998415412293:web:0fa07ed86e1636949b072c",
+    measurementId: "G-C36EW7DTRY"
+};
+
+const serverData = {
+    uid: null,
+    engineer: null,
+    sheep: null,
+    gambler: null
+};
+function getCurrentDate()
+{
+    var date = new Date();
+    var year = date.getFullYear().toString();
+    var month = date.getMonth() + 1;
+    month = month < 10 ? '0' + month.toString() : month.toString();
+    var day = date.getDate();
+    day = day < 10 ? '0' + day.toString() : day.toString();
+    var hour = date.getHours();
+    hour = hour < 10 ? '0' + hour.toString() : hour.toString();
+    var minites = date.getMinutes();
+    minites = minites < 10 ? '0' + minites.toString() : minites.toString();
+    var seconds = date.getSeconds();
+    seconds = seconds < 10 ? '0' + seconds.toString() : seconds.toString();
+    return year + month + day + hour + minites + seconds;
+}
+
+const savedData = {
+    index: null,
+    totalseed: 0,
+    seed : [],
+    clear: [],
+    trace: {
+        engineer: {how: null, path: []},
+        sheep: [],
+        gambler: []
+    },
+    time : null
+}
+
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+import { getDatabase, ref, set, get, child, runTransaction, onValue, query, orderByChild, orderByKey, limitToLast, equalTo } from "firebase/database";
+
+import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+const auth = getAuth();
+signInAnonymously(auth).catch((error) => {
+        console.log(error.code);
+        console.log(error.message);
+    });
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        serverData.uid = user.uid;
+        console.log(user.uid);
+        toggleCounter();
+    } else {
+    }
+});
+function writeUserData() {
+    if(!serverData.uid) return;
+    if(!savedData.index){
+        initUserData(null);
+        return;
+    }
+    const db = getDatabase();
+    savedData.time = getCurrentDate();
+    set(ref(db, 'users/' + serverData.uid), savedData);
+}
+function initUserData(value) {
+    const dbRef = ref(getDatabase());
+    get(child(dbRef, 'users/' + serverData.uid + '/index')).then((snapshot) => {
+        if (snapshot.exists()) {
+            savedData.index = snapshot.val();
+        }
+        else {
+            savedData.index = value;
+        }
+    }).then(function () {
+        writeUserData();
+    });
+}
+
+function readData(level) {
+    let r = 0;
+    const db = getDatabase();
+    if(level === 'engineer'){
+        const dbRef = ref(getDatabase());
+        get(child(dbRef, 'users/' + serverData.uid + '/index')).then((snapshot) => {
+            if (snapshot.exists()) {
+                r = Math.round(Math.random() * snapshot.val());
+            }
+        }).then(() =>{
+            const traceRef = query(ref(db, 'users/'), orderByChild('index'), equalTo(r));
+            get(traceRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    snapshot.forEach(data => {
+                        const key = data.key;
+                        const value = data.val();
+                        if(value.trace){
+                            if(value.trace[level]) serverData[level] = value.trace[level];
+                        }
+                    })
+                } else {
+                    readData(level);
+                }
+            }).then(() => {
+                if(serverData[level]) {
+                    checkSignal(serverData[level].path);
+                }
+                else {
+                    readData(level);
+                }
+            })
+        });
+    }
+    else if(level === 'gambler'){
+        let gamblerRef = query(ref(db, 'gambler/'));
+        get(gamblerRef, 'gambler/').then((snapshot) => {
+            if (snapshot.exists()) {
+                snapshot.forEach((value) => {
+                    console.log(value.val());
+                })
+            }
+        })
+    }
+}
+
+function toggleCounter() {
+    const db = getDatabase();
+    const viewRef = ref(db, 'userCount/views');
+    const userRef = ref(db, 'userCount/users');
+    const uidRef = query(ref(db, 'users/'), orderByKey(), equalTo(serverData.uid));
+
+    runTransaction(viewRef, (post) => {
+        return post + 1;
+    });
+    onValue(uidRef, (snapshot) => {
+        if(!snapshot.val()){
+            runTransaction(userRef, (post) => {
+                return post + 1;
+            }).then((value) => {
+                initUserData(value.snapshot.val());
+            });
+        }
+    }, {
+        onlyOnce: true
+    });
+}
+
+function gambleCounter(idx) {
+    const db = getDatabase();
+    const gambleRef = ref(db, 'gambler/' + idx);
+    runTransaction(gambleRef, (post) => {
+        return post + 1;
+    });
 }

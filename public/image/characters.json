@@ -505,7 +505,7 @@
    { "name": "dom-talk", "from": 12, "to": 13, "direction": "forward", "frameRate": 4 },
    { "name": "dom-run", "from": 14, "to": 15, "direction": "forward" , "frameRate": 8 },
     { "name": "dom-jump", "from": 14, "to": 15, "direction": "forward" , "frameRate": 8,  "repeat": null },
-   { "name": "dom-out", "from": 16, "to": 22, "direction": "forward" },
+   { "name": "dom-out", "from": 16, "to": 22, "direction": "forward", "frameRate": 8,  "repeat": null },
    { "name": "engineer-stand", "from": 23, "to": 24, "direction": "forward" },
    { "name": "engineer-talk", "from": 25, "to": 26, "direction": "forward", "frameRate": 4 },
    { "name": "engineer-type", "from": 27, "to": 28, "direction": "forward", "frameRate": 4 },

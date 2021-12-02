@@ -99,5 +99,25 @@
         "sourceSize": { "w" :16, "h" :20 },
         "pivot":  { "x": 0, "y" :1 }
   }
+  ,
+  {
+        "filename": "pc-off",
+        "frame":  { "x": 222, "y" :84, "w" :74, "h" :92 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :74, "h" :92 },
+        "sourceSize": { "w" :74, "h" :92 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "pc-broken",
+        "frame":  { "x": 148, "y" :176, "w" :74, "h" :92 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :74, "h" :92 },
+        "sourceSize": { "w" :74, "h" :92 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
   ]
 }

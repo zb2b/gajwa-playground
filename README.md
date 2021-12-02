@@ -6,8 +6,11 @@
 This is Gajwa-playground project.
 Based on Phaser.js
 
+## Update
+- server networking available.
+
 ### Version info
-- ver 0.2.3
+- ver 0.2.4
 
 ### Main script
 - rebuild.js
