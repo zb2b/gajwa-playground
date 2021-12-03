@@ -122,6 +122,7 @@ const mainConfig = {
     signalReadCount: 0,
     signalGambleTween: [],
 
+    theend: false,
     detectCount: 0,
     forestSeed: 5,
     gameResult: 0,
@@ -148,7 +149,6 @@ function preload() {
     this.load.json('text', 'data/text.json');
     // tile map
     this.load.tilemapTiledJSON("map", "map/map.json");
-    this.load.image("tileset", "map/tile-set.png");
     // sprites
     this.load.aseprite('character', 'image/characters.png', 'image/characters.json');
     this.load.aseprite('fishing-player', 'image/fishing-player.png', 'image/fishing-player.json');
@@ -156,8 +156,10 @@ function preload() {
     this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
 
     // UI
+
+    this.load.image("frame", "image/ending-frame.png");
+    this.load.spritesheet('title', 'image/title.png', { frameWidth: 180, frameHeight: 390, endFrame: 1 });
     this.load.spritesheet('signal', 'image/signal.png', { frameWidth: 16, frameHeight: 16, endFrame: 12 });
-    this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
     this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 11 });
     this.load.atlas('minigame', 'image/minigame.png', 'image/minigame.json');
     this.load.spritesheet('pc-err', 'image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
@@ -270,10 +272,8 @@ function endingMotion() {
         duration: 800,
         ease: Phaser.Math.Easing.Quintic.Out
     });
-    if(mainConfig.endingIdx === 0){
-        ui.logText[mainConfig.endingIdx].text = mainConfig.endingData[0];
-    }
     if(!mainConfig.endinglogTween[mainConfig.endingIdx]){
+        if(mainConfig.endingIdx === 0) return;
         mainConfig.endinglogTween[mainConfig.endingIdx] =
             game.scene.scenes[0].tweens.addCounter({
                 from: 0,
@@ -496,7 +496,7 @@ function createCharacters(scene) {
 
     mainObject.player = scene.physics.add.sprite(display.centerW, display.centerH - 40)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('player-stand');
-    mainObject.dom = scene.physics.add.sprite(display.centerW - 60, display.centerH - 60)
+    mainObject.dom = scene.physics.add.sprite(display.centerW - 72, display.centerH - 28)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('dom-stand').setVisible(false);
     mainObject.engineer = scene.physics.add.sprite(104, 504)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('engineer-type').setVisible(false);
@@ -531,20 +531,36 @@ function createGraphics(scene) {
 function createUIObjects(scene) {
     // TODO UI 오브젝트 생성
     ui.cam = scene.cameras.main;
+
+    ui.esc = scene.add.sprite(display.centerW, display.centerH, 'ui', 'escape0').setOrigin(0.5).setScale(3).setVisible(false).setInteractive();
+    ui.esc.on('pointerdown', () => {
+        ui.esc.setTexture('ui', 'escape1').setOrigin(0.5).setScale(3);
+    }).on('pointerup', () => {
+        clearTimeout(timer.shaker);
+        timer.shaker = undefined;
+        ui.esc.x = display.centerW;
+        ui.esc.y = display.centerH;
+        ui.esc.setTexture('ui', 'escape0').setOrigin(0.5).setScale(3);
+        ui.esc.setVisible(false);
+        ui.skip.setVisible(true);
+        skip();
+    }).on('pointerout', () => {
+        ui.esc.setTexture('ui', 'escape0').setOrigin(0.5).setScale(3);
+    });
+
     ui.bg = scene.add.sprite(0, 0, 'bg').setOrigin(0).setScale(2);
     ui.smoke = scene.add.sprite(200, 100).play('smoke').setScale(2).setVisible(false);
 
     ui.skip = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0)
         .setInteractive();
-    ui.white = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0xffffff);
     ui.background = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
 
     ui.dark = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000).setVisible(false);
-    ui.title = scene.add.sprite(display.centerW, 180, 'ui', 'title').setOrigin(0.5).setScale(2);
+    ui.title = scene.add.sprite(0, 0).play('title').setOrigin(0).setScale(2);
     ui.largeText = scene.add.text(display.centerW, display.centerH, '', fontConfig)
         .setAlign('center').setOrigin(0.5).setVisible(false);
-    ui.mark = scene.add.sprite(display.centerW - 60, display.centerH - 60, 'mark').play('mark')
-        .setOrigin(0.5, 1).setScale(2).setVisible(false);
+    ui.mark = scene.add.sprite(mainObject.dom.x - 12, mainObject.dom.y + 8, 'mark').play('mark')
+        .setOrigin(1).setScale(2).setVisible(false);
 
     ui.next = scene.physics.add.sprite(display.centerW - 60, display.height - 10).play('next')
         .setSize(display.width, 20).setScale(2).setOffset(-60, 30).setVisible(false);
@@ -779,7 +795,7 @@ function createUIObjects(scene) {
     ui.fishingBar.body.bounce.y = 0.5;
 
     ui.fishingBtn = scene.add.sprite(display.centerW, display.height - 100, 'ui', 'fishBtn0').setOrigin(0.5).setScale(3).setInteractive();
-
+    ui.fishingMark = scene.add.sprite(0, 0).play('mark-fish').setScale(3).setVisible(false);
     ui.fishingFloat = scene.add.sprite(0, 0, 'ui', 'float').setScale(3).setVisible(false);
     ui.fishingFloat.on('animationcomplete', function () {
         let key = ui.fishingFloat.anims.currentAnim.key;
@@ -913,14 +929,14 @@ function createUIObjects(scene) {
     ui.doors.add(ui.doorlist);
     ui.gambleBtns = scene.add.container();
     ui.gambleBtn = {};
-    ui.gambleBtn.left = scene.add.sprite(display.centerW - 96, 580, 'ui', 'left-on').setScale(3).setInteractive();
-    ui.gambleBtn.select = scene.add.sprite(display.centerW, 580, 'ui', 'select-on').setScale(3).setInteractive();
-    ui.gambleBtn.right = scene.add.sprite(display.centerW + 96, 580, 'ui', 'right-on').setScale(3).setInteractive();
+    ui.gambleBtn.left = scene.add.sprite(display.centerW - 96, 562, 'ui', 'left-on').setScale(3).setInteractive();
+    ui.gambleBtn.select = scene.add.sprite(display.centerW, 562, 'ui', 'select-on').setScale(3).setInteractive();
+    ui.gambleBtn.right = scene.add.sprite(display.centerW + 96, 562, 'ui', 'right-on').setScale(3).setInteractive();
     ui.gambleHand = scene.add.sprite(ui.doorlist[mainConfig.gambleSelection].x + 6, 470).play('hand').setOrigin(0).setScale(3).setVisible(false);
 
     ui.gambleResult = [];
     ui.gambleResult[0] = scene.add.sprite(ui.doorlist[0].x + 21, 321).play('fakesheep').setScale(3).setVisible(false);
-    ui.gambleResult[1] = scene.add.sprite(ui.doorlist[1].x + 21, 321).play('double').setScale(3).setVisible(false);
+    ui.gambleResult[1] = scene.add.sprite(ui.doorlist[1].x + 21, 300).play('double').setScale(3).setVisible(false);
     ui.gambleResult[2] = scene.add.sprite(ui.doorlist[2].x + 21, 321).play('fakesheep').setScale(3).setVisible(false);
 
     for (const [key, value] of Object.entries(ui.gambleBtn)) {
@@ -944,7 +960,7 @@ function createUIObjects(scene) {
                     ui.doorlist[mainConfig.gambleSelection].play('door-on');
                     const num = ["첫 번째 ", "두 번째 ", "세 번째 "];
                     status.index = 24;
-                    line.story[4][24] = "[몬티 홀스]\n오 마이 갓!!!\n" + num[mainConfig.gambleSelection] + "문을 고르셨습니다!!\n신중하게 고르신거겠지요~?";
+                    line.story[4][24] = "[몬티 홀]\n오 마이 갓!!!\n" + num[mainConfig.gambleSelection] + "문을 고르셨습니다!!\n신중하게 고르신거겠지요~?";
                     if(!ui.dialogGroup.visible) {
                         ui.skip.setVisible(true);
                         ui.dialogGroup.setVisible(true);
@@ -957,23 +973,23 @@ function createUIObjects(scene) {
                     ui.gambler.play('gambler-show');
                     if(mainConfig.gambleFirst === mainConfig.gambleSelection){
                         // 선택 유지
-                        line.story[4][32] = "[몬티 홀스]\n골랐습니다! 뚝심있는 분이시군요!\n처음 고른 문이 역시 믿을만하죠?";
+                        line.story[4][32] = "[몬티 홀]\n골랐습니다! 뚝심있는 분이시군요!\n처음 고른 문이 역시 믿을만하죠?";
                     }
                     else {
                         // 선택 바꿈
                         ui.doorlist[mainConfig.gambleFirst].play('door-off');
                         ui.doorlist[mainConfig.gambleSelection].play('door-on');
-                        line.story[4][32] = "[몬티 홀스]\n오! 정말입니까? 이분! 선택을 바꾸고\n새로운 문을 고르셨습니다!!\n이제는 되돌릴 수 없는 선택!";
+                        line.story[4][32] = "[몬티 홀]\n오! 정말입니까? 이분! 선택을 바꾸고\n새로운 문을 고르셨습니다!!\n이제는 되돌릴 수 없는 선택!";
                     }
                     if(mainConfig.gambleSelection === 1){
                         // 성공
-                        line.story[4][35] = "[몬티 홀스]\n당첨입니다!!! 정말 놀랍습니다!"
-                        line.story[4][36] = "[몬티 홀스]\n약속한대로 씨앗을 두배로 만들어\n드리겠습니다!! 축하드립니다!\n잘 가세요!"
+                        line.story[4][35] = "[몬티 홀]\n당첨입니다!!! 정말 놀랍습니다!"
+                        line.story[4][36] = "[몬티 홀]\n약속한대로 씨앗을 두배로 만들어\n드리겠습니다!! 축하드립니다!\n잘 가세요!"
                     }
                     else {
                         // 실패
-                        line.story[4][35] = "[몬티 홀스]\n안타깝게도.. 꽝입니다!!!\n정말 유감이네요!"
-                        line.story[4][36] = "[몬티 홀스]\n약속한대로 씨앗의 절반은 제가...\n하하 그럼 이만! 잘 가세요!"
+                        line.story[4][35] = "[몬티 홀]\n안타깝게도.. 꽝입니다!!!\n정말 유감이네요!"
+                        line.story[4][36] = "[몬티 홀]\n약속한대로 씨앗의 절반은 제가...\n하하 그럼 이만! 잘 가세요!"
                     }
                     if(!ui.dialogGroup.visible) {
                         ui.skip.setVisible(true);
@@ -1085,32 +1101,42 @@ function createUIObjects(scene) {
     ];
     for (let i = 0; i < 6; i++) {
         ui.logList[i] = scene.add.container().setPosition(display.centerW + i * display.width, display.centerH);
-        let txt = scene.add.text(0, 80, loginfo[i].text, endingFont)
+        let txt = scene.add.text(0, 220, loginfo[i].text, endingFont)
             .setAlign('left').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
-        let box = scene.add.rectangle(txt.x, txt.y + 12, loginfo[i].size, 40, (i === 5) ? 0x00ff00:0xeaeaea).setOrigin(0.5, 1);
-        ui.logText[i] = scene.add.text(0, 20, '0', endingCount)
+        let box = scene.add.rectangle(txt.x, txt.y + 10, loginfo[i].size, 36, 0x00ff00).setOrigin(0.5, 1);
+        ui.logText[i] = scene.add.text(0, 40, '0', endingCount)
             .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(80);
         ui.logList[i].add([box, txt, ui.logText[i]]);
     }
-    ui.endingLog = scene.add.container().add(ui.logList);
+    let num = ['', '마리', '마리', '번', '개', '개'];
+    ui.theend = scene.add.text(display.centerW, display.centerH + 32, 'THE END', endingCount)
+        .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(32);
+
+    ui.endingLog = scene.add.container().add(ui.logList).setPosition(display.width, 0);
+
 
     ui.endingchar = [];
-    ui.endingchar[0] = scene.add.sprite(display.centerW - 42, 21).play('dom-stand').setScale(3).setOrigin(0);
-    ui.endingchar[1] = scene.add.sprite(display.centerW + 42, 60).play('fishman-stand').setFlipX(true).setScale(3).setOrigin(0);
-    ui.endingchar[2] = scene.add.sprite(display.centerW - 150, 60).play('gambler-stand').setScale(3).setOrigin(0);
-    ui.endingchar[3] = scene.add.sprite(display.centerW - 96, 90).play('man-stand').setScale(3).setOrigin(0);
-    ui.endingchar[4] = scene.add.sprite(display.centerW, 90).play('engineer-stand').setFlipX(true).setScale(3).setOrigin(0);
+    ui.endingchar[0] = scene.add.sprite(display.centerW, 120).play('dom-stand').setScale(2).setOrigin(0.5);
+    ui.endingchar[1] = scene.add.sprite(display.centerW + 40, 100).play('fishman-stand').setFlipX(true).setScale(2).setOrigin(0.5);
+    ui.endingchar[2] = scene.add.sprite(display.centerW - 40, 100).play('gambler-stand').setScale(2).setOrigin(0.5);
+    ui.endingchar[3] = scene.add.sprite(display.centerW - 60, 140).play('man-stand').setScale(2).setOrigin(0.5);
+    ui.endingchar[4] = scene.add.sprite(display.centerW + 60, 140).play('engineer-stand').setFlipX(true).setScale(2).setOrigin(0.5);
+
+    ui.endingFrame = scene.add.sprite(0, 0, 'frame').setScale(2).setOrigin(0);
 
     ui.endingGroup.add(bg);
     ui.endingGroup.add(ui.endingLog);
     ui.endingGroup.add(ui.endingchar);
+    ui.endingGroup.add(ui.theend);
+    ui.endingGroup.add(ui.endingFrame);
+
     ui.endingGroup.setVisible(false);
 
     // 스테이지 별 미니게임 씬 오브젝트 추가
     ui.gameScene = [];
     ui.gameScene[0] = scene.add.container().add([ui.pcKeyboard, ui.pc, ui.keyboard, ui.pcErr, ui.pcPw, ui.pcDown, ui.pcOff, ui.pcBreak]);
     ui.gameScene[1] = scene.add.container();
-    ui.gameScene[2] = scene.add.container().add([ui.fishing, ui.fishingFloat, ui.fishingPlayer, ui.fishingCastGroup, ui.fishingEffect, ui.fishingGroup, ui.fishingBtn]);
+    ui.gameScene[2] = scene.add.container().add([ui.fishing, ui.fishingFloat, ui.fishingPlayer, ui.fishingCastGroup, ui.fishingEffect, ui.fishingGroup, ui.fishingMark, ui.fishingBtn]);
     ui.gameScene[3] = scene.add.container().add([ui.gamble, ui.doors, ui.gambleResult[0], ui.gambleResult[1], ui.gambleResult[2], ui.gambler, ui.gambleBtns, ui.gambleHand]);
     ui.gameScene[4] = scene.add.container();
     ui.bridge = scene.add.container().setVisible(false);
@@ -1261,7 +1287,7 @@ function setLayer(scene) {
     }
 
     ui.group = scene.add.container();
-    ui.group.add([ui.background, ui.mark, ui.gameGroup, ui.signalBtn, ui.dialogGroup, ui.rewardGroup, ui.taskGroup, ui.largeText, ui.white, ui.title, mainObject.TitleParticle, ui.dark, ui.signalGamblerGroup, ui.skip]);
+    ui.group.add([ui.background, ui.mark, ui.gameGroup, ui.signalBtn, ui.dialogGroup, ui.rewardGroup, ui.taskGroup, ui.largeText, ui.esc, ui.title, mainObject.TitleParticle, ui.dark, ui.signalGamblerGroup, ui.skip]);
 
     // 레이어 정렬
     mainObject.layer.add(mainObject.bg);
@@ -1276,15 +1302,34 @@ function setLayer(scene) {
 function setAnimations(scene) {
     // TODO 애니메이션 추가
     scene.anims.create({
+        key: 'title',
+        frames: scene.anims.generateFrameNumbers('title', { start: 0, end: 1 }),
+        frameRate: 1,
+        repeat: -1
+    });
+    scene.anims.create({
         key: 'signal',
         frames: scene.anims.generateFrameNumbers('signal', { start: 0, end: 12 }),
         frameRate: 12,
     });
     scene.anims.create({
         key: 'mark',
-        frames: scene.anims.generateFrameNumbers('mark', { start: 0, end: 1, first: 0 }),
+        repeat: -1,
         frameRate: 2,
-        repeat: -1
+        frames: scene.anims.generateFrameNames('ui', {
+            prefix: 'mark',
+            end: 1
+        })
+    });
+    scene.anims.create({
+        key: 'mark-fish',
+        repeat: -1,
+        frameRate: 2,
+        frames: scene.anims.generateFrameNames('ui', {
+            prefix: 'mark',
+            start: 2,
+            end: 3
+        })
     });
     scene.anims.create({
         key: 'pc-err',
@@ -1716,12 +1761,15 @@ function shakeObject(obj, max, speed, time) {
     if(timer.shaker !== undefined) return;
     const x = obj.x;
     const y = obj.y;
-    setTimeout(()=> {
-        clearTimeout(timer.shaker);
-        timer.shaker = undefined;
-        obj.x = x;
-        obj.y = y;
-    }, time);
+    if(time !== null)
+    {
+        setTimeout(()=> {
+            clearTimeout(timer.shaker);
+            timer.shaker = undefined;
+            obj.x = x;
+            obj.y = y;
+        }, time);
+    }
     repeat();
     function repeat() {
         RandomizePos(obj, x, y, 0, max);
@@ -1935,6 +1983,7 @@ function fishingFinish(success) {
     }
 }
 function startFishing() {
+    ui.fishingMark.setVisible(false);
     ui.fishingBar.body.setVelocity(0);
     ui.fishingBar.setPosition(display.centerW, display.centerH);
     ui.fishingCastBoxB.setTexture('ui', 'catch').setOrigin(0.5);
@@ -1962,12 +2011,14 @@ function startBite() {
     mainConfig.fishingTimer = setTimeout(function () {
         mainConfig.fishWait = true;
         ui.fishingPlayer.play('fishing-catch');
+        ui.fishingMark.setVisible(true).setPosition(ui.fishingFloat.x - 16, display.centerH + 30);
         // 입질 시작
         ui.task.text = '한번 더 눌러서 낚시를 시작하자';
         ui.fishingFloat.play('float-bite');
         createFloatWave(ui.fishingFloat);
         // 무반응할 경우 낚시 실패
         mainConfig.fishingFailTimer = setTimeout(function () {
+            ui.fishingMark.setVisible(false);
             mainConfig.fishWait = false;
             ui.fishingFloat.play('float-loop');
             startBite();
@@ -2268,7 +2319,6 @@ function skip() {
             mainObject.TitleEmitter.stop();
             mainObject.TitleEmitter.setVisible(false);
             ui.title.setVisible(false);
-            ui.white.setVisible(false);
             chapterTitle(mainConfig.debugMode);
             ui.background.setVisible(false);
             ui.dark.setVisible(true);
@@ -2279,16 +2329,8 @@ function skip() {
         mainObject.TitleEmitter.stop();
         game.scene.scenes[0].tweens.add({
             targets: ui.title,
-            y: -120,
-            duration: 800,
-            ease: Phaser.Math.Easing.Quintic.In,
-            onComplete: function () {
-            }
-        });
-        game.scene.scenes[0].tweens.add({
-            targets: ui.white,
-            y: -display.height,
-            duration: 1200,
+            y: -390-340,
+            duration: 1800,
             ease: Phaser.Math.Easing.Quintic.In,
             onComplete: function () {
                 ui.title.setVisible(false);
@@ -2307,6 +2349,11 @@ function skip() {
         }
         else {
             if(ui.title.visible) return;
+            if(status.index === 3){
+                ui.esc.setVisible(true);
+                ui.skip.setVisible(false);
+                shakeObject(ui.esc, 6, 60, null);
+            }
             ui.largeText.text = line.opening[status.index];
             shakeObject(ui.largeText, 20, 20, 240);
             status.index++;
@@ -2323,7 +2370,25 @@ function skip() {
         dialog();
     }
     else if(status.scene === 'ending'){
-        if(mainConfig.endingIdx < 5) mainConfig.endingIdx++;
+        if(!mainConfig.theend){
+            game.scene.scenes[0].tweens.add({
+                targets: ui.endingLog,
+                x: 0,
+                duration: 800,
+                ease: Phaser.Math.Easing.Quintic.Out
+            });
+            game.scene.scenes[0].tweens.add({
+                targets: ui.theend,
+                x: -display.width,
+                duration: 800,
+                ease: Phaser.Math.Easing.Quintic.Out,
+                onComplete: function (){
+                    mainConfig.theend = true;
+                }
+            });
+            return;
+        }
+        if(mainConfig.endingIdx < ui.logText.length - 1) mainConfig.endingIdx++;
         endingMotion();
     }
 }
@@ -2639,6 +2704,7 @@ function eventByIndex(){
             mainObject.fishman.play('fishman-stand');
         }
         else if(index === 11){
+            if(savedData.trace.fish === 0) savedData.trace.fish = 1;
             setTimeout(function () {
                 setReward(true, mainConfig.reward[2]);
             }, 400);
@@ -2714,6 +2780,7 @@ function eventByIndex(){
     }
     else if(chapter === 4) {
         if (index === 2) {
+            mainObject.TitleEmitter.setVisible(false);
             mainObject.TitleEmitter.start();
             mainObject.TitleEmitter.setGravityX(20);
             mainObject.TitleEmitter.setGravityY(40);
@@ -2772,7 +2839,7 @@ function eventByIndex(){
             gamble(true);
         }
         else if(index === 13){
-            line.story[4][14] = "[몬티 홀스]\n지금 갖고있는 씨앗이.. 음..\n모두 합쳐서 " + mainConfig.seedNum + "개 정도 되니까..\n두배면...와우!";
+            line.story[4][14] = "[몬티 홀]\n지금 갖고있는 씨앗이.. 음..\n모두 합쳐서 " + mainConfig.seedNum + "개 정도 되니까..\n두배면...와우!";
         }
         else if(index === 17) {
             // 겜블 시작
@@ -3036,7 +3103,7 @@ function eventByIndex(){
                     mainConfig.domFollow = false;
                     mainConfig.lookAt.player = mainObject.dom;
                     mainConfig.lookAt.dom = mainObject.player;
-                    moveToPoint('player', mainObject.dom.x + 40, mainObject.dom.y + 20, true);
+                    moveToPoint('player', mainObject.dom.x + 40, mainObject.dom.y, true);
                     if(!ui.dialogGroup.visible) {
                         ui.skip.setVisible(true);
                         ui.dialogGroup.setVisible(true);
@@ -3053,29 +3120,20 @@ function eventByIndex(){
             scene.tweens.add({
                 targets: light,
                 alpha: 1,
-                duration: 6000,
+                duration: 4000,
                 else: Phaser.Math.Easing.Quintic.In,
                 onComplete: function () {
                     let endlight = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0).setAlpha(1);
                     ui.endingGroup.add(endlight);
                     ui.endingGroup.setVisible(true);
-                    ui.endingLog.x = display.width;
                     scene.tweens.add({
                         targets: endlight,
                         alpha: 0,
                         duration: 3000,
                         else: Phaser.Math.Easing.Quintic.In,
                         onComplete: function () {
-                            scene.tweens.add({
-                                targets: ui.endingLog,
-                                x: 0,
-                                duration: 800,
-                                else: Phaser.Math.Easing.Quintic.Out,
-                                onComplete: function () {
-                                    status.scene = 'ending';
-                                    ui.skip.setVisible(true);
-                                }
-                            });
+                            status.scene = 'ending';
+                            ui.skip.setVisible(true);
                         }
                     });
                 }
@@ -3456,6 +3514,8 @@ function setEndingData(total) {
     mainConfig.endingData[3] = savedData.detectCount;
     mainConfig.endingData[4] = savedData.totalseed;
     mainConfig.endingData[5] = total;
+
+    ui.logText[0].text = mainConfig.endingData[0];
 }
 
 // TODO 통신 제어
