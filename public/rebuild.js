@@ -12,7 +12,7 @@ const config = {
     physics: {
         default: 'arcade',
         arcade: {
-            //debug: true
+            debug: true
         }
     },
     scene: {
@@ -430,14 +430,19 @@ function update() {
                 ui.fishingCastbar.width = Math.abs(Math.round(mainConfig.fishPoint * 0.45));
                 ui.fishingCastbar.setOrigin(0.5);
             }
+            if(ui.fishIcon.body.touching.none) mainConfig.fishIconContact = false;
             if(mainConfig.fishIconContact){
-                if(mainConfig.fishPoint < 320) mainConfig.fishPoint++;
+                if(mainConfig.fishPoint < 320) {
+                    mainConfig.fishPoint++;
+                }
                 else if(mainConfig.fishPoint === 320) {
                     // 잡음
                     mainConfig.fishPoint = 0;
                     fishingFinish(true);
                 }
-            } else {
+                return;
+            }
+            else if(!mainConfig.fishIconContact) {
                 if(mainConfig.fishPoint > -320) {
                     mainConfig.fishPoint--;
                 }
@@ -446,8 +451,8 @@ function update() {
                     mainConfig.fishPoint = 0;
                     fishingFinish(false);
                 }
+                return;
             }
-            mainConfig.fishIconContact = false;
         }
     }
 
@@ -783,9 +788,10 @@ function createUIObjects(scene) {
         }
     });
     // 물고기 잡기 콜라이더
-    let fishCol = scene.physics.add.overlap(ui.fishIcon, ui.fishingBar, function () {
-        if(!mainConfig.fishIconContact) mainConfig.fishIconContact = true;
+    scene.physics.add.overlap(ui.fishIcon, ui.fishingBar, function () {
+        mainConfig.fishIconContact = true;
     }, null, this);
+
 
     ui.fishingBtn.on('pointerdown', function () {
         if(mainConfig.fishingDone) return;
