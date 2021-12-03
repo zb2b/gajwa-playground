@@ -122,7 +122,12 @@ const mainConfig = {
     signalReadCount: 0,
     signalGambleTween: [],
 
-    forestSeed: 5
+    detectCount: 0,
+    forestSeed: 5,
+    gameResult: 0,
+    endingIdx: 0,
+    endingData: [],
+    endinglogTween: []
 }
 const timer = {};
 const event = {};
@@ -153,7 +158,7 @@ function preload() {
     // UI
     this.load.spritesheet('signal', 'image/signal.png', { frameWidth: 16, frameHeight: 16, endFrame: 12 });
     this.load.spritesheet('mark', 'image/mark.png', { frameWidth: 32, frameHeight: 32, endFrame: 1 });
-    this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 6 });
+    this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 11 });
     this.load.atlas('minigame', 'image/minigame.png', 'image/minigame.json');
     this.load.spritesheet('pc-err', 'image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
     this.load.spritesheet('float-water', 'image/float-water.png', { frameWidth: 64, frameHeight: 32, endFrame: 18 });
@@ -250,11 +255,39 @@ function create() {
         resetGame(resetConfig);
     })
     this.input.keyboard.addKey('Z').on('down', function(event) {
-        console.log(mainConfig.pcRecord);
+        if(mainConfig.endingIdx > 0) mainConfig.endingIdx--;
+        endingMotion();
     })
     this.input.keyboard.addKey('X').on('down', function(event) {
-        console.log(ui.gameGroup.visible);
+        if(mainConfig.endingIdx < 5) mainConfig.endingIdx++;
+        endingMotion();
     })
+}
+function endingMotion() {
+    game.scene.scenes[0].tweens.add({
+        targets: ui.endingLog,
+        x: mainConfig.endingIdx * -display.width,
+        duration: 800,
+        ease: Phaser.Math.Easing.Quintic.Out
+    });
+    if(mainConfig.endingIdx === 0){
+        ui.logText[mainConfig.endingIdx].text = mainConfig.endingData[0];
+    }
+    if(!mainConfig.endinglogTween[mainConfig.endingIdx]){
+        mainConfig.endinglogTween[mainConfig.endingIdx] =
+            game.scene.scenes[0].tweens.addCounter({
+                from: 0,
+                to: mainConfig.endingData[mainConfig.endingIdx],
+                ease: Phaser.Math.Easing.Quartic.Out,
+                duration: 1600,
+                repeat: 0,
+                onUpdate: function (tween)
+                {
+                    let value = Math.round(tween.getValue());
+                    ui.logText[mainConfig.endingIdx].text = value;
+                }
+            });
+    }
 }
 function resetGame(resetConfig) {
     game.scene.scenes[0].scene.restart();
@@ -460,7 +493,7 @@ function createCharacters(scene) {
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('player-stand');
     mainObject.dom = scene.physics.add.sprite(display.centerW - 60, display.centerH - 60)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('dom-stand').setVisible(false);
-    mainObject.engineer = scene.physics.add.sprite(104, 506)
+    mainObject.engineer = scene.physics.add.sprite(104, 504)
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).play('engineer-type').setVisible(false);
     mainObject.man = scene.physics.add.sprite(302, 168).play('man-stand')
         .setOrigin(0.5, 1).setScale(2).setSize(16, 16).setOffset(8, 16).setFlipX(true).setVisible(false);
@@ -472,9 +505,9 @@ function createCharacters(scene) {
     mainObject.sheeps = [];
     const sheepPos = [
         { x: 216, y: 64 },
-        { x: 272, y: 64 },
-        { x: 328, y: 64 },
-        { x: 216, y: 106 },
+        { x: 272, y: 62 },
+        { x: 328, y: 68 },
+        { x: 216, y: 104 },
         { x: 272, y: 106 }
         ]
     for (let i = 0; i < 5; i++) {
@@ -1004,30 +1037,68 @@ function createUIObjects(scene) {
             ui.signalBtn.disableInteractive();
             const level = {1: 'engineer', 2: 'sheep', 4: 'gambler' };
             readData(level[status.chapterIdx]);
+            mainConfig.detectCount++;
+            savedData.detectCount = mainConfig.detectCount;
         }
     });
 
     // 엔딩
     ui.endingGroup = scene.add.container();
+    ui.endingCounts = [];
     ui.endingText = [];
+    ui.endingBoxes = [];
     const endingFont = {font: '48px "dgm"', color: '#000'};
-    const endingCount = {font: '48px "dgm"', color: '#0f0'};
+
+    const endingCount = {font: '48px "dgm"', color: '#000'};
+    const endingCountShadow = {font: '48px "dgm"', color: '#000'};
 
     let bg = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0);
+    ui.endingBtns = [];
+    const BtnText = [
+        {text: '> 처음으로 돌아가기', size: 180},
+        {text: '> 미래에 숲이 된 공원 보러가기', size: 260},
+        {text: '> 가좌플레이그라운드 방문하기', size: 260},
+        {text: '> 미지의 세계로', size: 148},
+    ]
+    for (let i = 0; i < 4; i++) {
+        let txt = scene.add.text(display.centerW, display.centerH + (i * 60), BtnText[i].text, endingFont)
+            .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
+        let box = scene.add.rectangle(txt.x, txt.y + 20, BtnText[i].size, 54, 0x00ff00).setOrigin(0.5, 1);
+        ui.endingBtns[i] = scene.add.container().add([box, txt]);
+    }
 
-    ui.endingText[0] = scene.add.text(display.centerW, 160, '당신이 기부한 씨앗의 수', endingFont)
-        .setAlign('left').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
-    ui.endingText[1] = scene.add.text(display.centerW, 300, '시공간을 넘어 모인 씨앗의 수', endingFont)
-        .setAlign('left').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
-    ui.endingtotalseed = scene.add.text(display.centerW, 140, '16', endingCount)
-        .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(80).setStroke('#000', 6);
-    ui.endingseed = scene.add.text(display.centerW, 280, '74', endingCount)
-        .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(80).setStroke('#000', 6);
-    ui.endingGroup.add([bg, ui.endingtotalseed, ui.endingseed]);
-    ui.endingGroup.add(ui.endingText);
+    ui.logList = [];
+    ui.logText = [];
+    const loginfo = [
+        {text: '당신이 컴퓨터를 정지한 방법', size: 260},
+        {text: '당신이 구한 한 양의 수', size: 200},
+        {text: '당신이 낚은 물고기의 수', size: 200},
+        {text: '당신이 시공간을 감지한 횟수', size: 240},
+        {text: '당신이 기부한 씨앗의 수', size: 200},
+        {text: '시공간을 넘어 모인 씨앗의 수', size: 260},
+    ];
+    for (let i = 0; i < 6; i++) {
+        ui.logList[i] = scene.add.container().setPosition(display.centerW + i * display.width, display.centerH);
+        let txt = scene.add.text(0, 80, loginfo[i].text, endingFont)
+            .setAlign('left').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
+        let box = scene.add.rectangle(txt.x, txt.y + 12, loginfo[i].size, 40, (i === 5) ? 0x00ff00:0xeaeaea).setOrigin(0.5, 1);
+        ui.logText[i] = scene.add.text(0, 20, '0', endingCount)
+            .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(80);
+        ui.logList[i].add([box, txt, ui.logText[i]]);
+    }
+    ui.endingLog = scene.add.container().add(ui.logList);
+
+    ui.endingchar = [];
+    ui.endingchar[0] = scene.add.sprite(display.centerW - 42, 21).play('dom-stand').setScale(3).setOrigin(0);
+    ui.endingchar[1] = scene.add.sprite(display.centerW + 42, 60).play('fishman-stand').setFlipX(true).setScale(3).setOrigin(0);
+    ui.endingchar[2] = scene.add.sprite(display.centerW - 150, 60).play('gambler-stand').setScale(3).setOrigin(0);
+    ui.endingchar[3] = scene.add.sprite(display.centerW - 96, 90).play('man-stand').setScale(3).setOrigin(0);
+    ui.endingchar[4] = scene.add.sprite(display.centerW, 90).play('engineer-stand').setFlipX(true).setScale(3).setOrigin(0);
+
+    ui.endingGroup.add(bg);
+    ui.endingGroup.add(ui.endingLog);
+    ui.endingGroup.add(ui.endingchar);
     ui.endingGroup.setVisible(false);
-
-    //ui.endingGroup.setVisible(false);
 
     // 스테이지 별 미니게임 씬 오브젝트 추가
     ui.gameScene = [];
@@ -1160,10 +1231,10 @@ function createObjects(scene) {
     object.list[4] = scene.add.sprite(110, 506, 'keyboard', 'pc-console').setScale(2).setOrigin(0, 1).setVisible(false);
     object.list[5] = scene.add.sprite(70, 654, 'obj', 'gate').setScale(2).setOrigin(0, 1).setVisible(false);
     object.list[6] = scene.add.sprite(148, 232, 'obj', 'arrow').setScale(2).setOrigin(0, 1).setVisible(false);
-    object.list[7] = scene.add.sprite(158, 402, 'obj', 'tree-bottom').setScale(2).setOrigin(0, 1).setVisible(false);
+    object.list[7] = scene.add.sprite(158, 402, 'obj', 'tree-bottom0').setScale(2).setOrigin(0, 1).setVisible(false);
 
-    object.tree = scene.add.sprite(82, 150, 'obj', 'tree-top').setScale(2).setOrigin(0).setVisible(false);
-    object.treeshade = scene.add.sprite(88, 366, 'obj', 'tree-shade').setScale(2).setOrigin(0).setVisible(false);
+    object.tree = scene.add.sprite(82, 150, 'obj', 'tree-top0').setScale(2).setOrigin(0).setVisible(false);
+    object.treeshade = scene.add.sprite(88, 366, 'obj', 'tree-shade0').setScale(2).setOrigin(0).setVisible(false);
 
     // 위치 맞추기용
     object.sample = scene.add.sprite(display.centerW, display.centerH, 'sample').setOrigin(0.5).setAlpha(0).setScale(2);
@@ -1253,8 +1324,21 @@ function setAnimations(scene) {
         frameRate: 1,
     });
     scene.anims.create({
-        key: 'bg5',
-        frames: scene.anims.generateFrameNumbers('bg', { start: 6, end: 6 }),
+        key: 'bg5-0',
+        frames: scene.anims.generateFrameNumbers('bg', { start: 6, end: 7 }),
+        repeat: -1,
+        frameRate: 1,
+    });
+    scene.anims.create({
+        key: 'bg5-1',
+        frames: scene.anims.generateFrameNumbers('bg', { start: 8, end: 9 }),
+        repeat: -1,
+        frameRate: 1,
+    });
+    scene.anims.create({
+        key: 'bg5-2',
+        frames: scene.anims.generateFrameNumbers('bg', { start: 10, end: 11 }),
+        repeat: -1,
         frameRate: 1,
     });
     scene.anims.create({
@@ -1826,6 +1910,8 @@ function fishingFinish(success) {
         else {
             ui.task.text = line.task[status.chapterIdx][2];
             mainConfig.retryFishing++;
+            savedData.trace.fish = mainConfig.retryFishing + 1;
+
         }
         ui.fishingPlayer.play('fishing-finish');
         mainConfig.fishingDone = true;
@@ -2224,14 +2310,15 @@ function skip() {
         if(ui.rewardGroup.visible === true){
             setReward(false, null);
             if(status.chapterIdx === 5) {
-                setTimeout(function () {
-                    mainConfig.playerMovable = true;
-                }, 10);
                 return;
             }
             ui.dialogGroup.setVisible(true);
         }
         dialog();
+    }
+    else if(status.scene === 'ending'){
+        if(mainConfig.endingIdx < 5) mainConfig.endingIdx++;
+        endingMotion();
     }
 }
 function dialog() {
@@ -2378,7 +2465,7 @@ function eventByIndex(){
                             clearTimeout(n);
                             return;
                         }
-                        moveToPoint('engineer', 104, 506, true);
+                        moveToPoint('engineer', 104, 504, true);
                         mainConfig.moveFinishedEvent.engineer = function () {
                             mainObject.engineer.play('engineer-type');
                             mainObject.engineer.setFlipX(false);
@@ -2855,6 +2942,33 @@ function eventByIndex(){
     }
     else if(chapter === 5) {
         if(index === 2){
+            const newline = [
+                ["[돔]\n어때? 나무 그늘이 있으니 살 것 같지?", "[그늘에 들어가 몸을 회복한다]",],
+                ["[돔]\n음..간신히 그늘은 피할 수 있겠네.", "[그늘에 들어가 한 숨 돌린다]",],
+            ]
+            const newPos = [
+                {
+                    player: {x: display.centerW + 40, y: display.centerH + 90},
+                    dom: {x: display.centerW - 40, y: display.centerH + 90},
+                },
+                {
+                    player: {x: display.centerW + 30, y: display.centerH + 70},
+                    dom: {x: display.centerW - 30, y: display.centerH + 70},
+                },
+                {
+                    player: {x: display.centerW + 16, y: display.centerH + 50},
+                    dom: {x: display.centerW - 16, y: display.centerH + 50},
+                },
+            ]
+            if(mainConfig.gameResult === 1) {
+                line.story[5][3] = newline[0][0];
+                line.story[5][4] = newline[0][1];
+            }
+            else if(mainConfig.gameResult === 2) {
+                line.story[5][3] = newline[1][0];
+                line.story[5][4] = newline[1][1];
+            }
+
             moveEnable();
             let treeCol = scene.add.rectangle(display.centerW, display.centerH + 80, display.width, 40, 0x000000).setVisible(false);
             scene.physics.add.existing(treeCol);
@@ -2865,8 +2979,8 @@ function eventByIndex(){
                 mainConfig.domFollow = false;
                 mainConfig.lookAt.player = mainObject.dom;
                 mainConfig.lookAt.dom = mainObject.player;
-                moveToPoint('player', display.centerW + 40, display.centerH + 90, true);
-                moveToPoint('dom', display.centerW - 40, display.centerH + 90, true);
+                moveToPoint('player', newPos[mainConfig.gameResult].player.x, newPos[mainConfig.gameResult].player.y, true);
+                moveToPoint('dom', newPos[mainConfig.gameResult].dom.x, newPos[mainConfig.gameResult].dom.y, true);
                 if(!ui.dialogGroup.visible) {
                     ui.skip.setVisible(true);
                     ui.dialogGroup.setVisible(true);
@@ -2885,7 +2999,7 @@ function eventByIndex(){
             scene.physics.add.existing(seed);
             seedColect();
             function seedColect() {
-                seed.setPosition(display.centerW + getRandomInt(160), display.height - Math.round(Math.random() * 200));
+                seed.setPosition(display.centerW + getRandomInt(160), display.height + 16 - Math.round(Math.random() * 340));
                 let seedCol = scene.physics.add.overlap(mainObject.player, seed, function () {
                     if(mainConfig.forestSeed > 0){
                         seedCol.active = false;
@@ -2896,8 +3010,8 @@ function eventByIndex(){
                 }, null, this);
             }
             function seedDrop() {
-                mainConfig.playerMovable = false;
-                moveToPoint('player', mainObject.player.x, mainObject.player.y, false);
+                status.index = 11;
+                moveToPoint('player', mainObject.player.x, mainObject.player.y, true);
                 let seedNum = Math.ceil(Math.random() * 3);
                 setTimeout(() => ui.skip.setVisible(true), 400);
                 ui.rewardGroup.setVisible(true);
@@ -2909,33 +3023,70 @@ function eventByIndex(){
                 }
                 writeUserData();
             }
-            let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
-                status.index = 12;
-                col.active = false;
-                mainConfig.playerMovable = false;
-                mainConfig.domFollow = false;
-                mainConfig.lookAt.player = mainObject.dom;
-                mainConfig.lookAt.dom = mainObject.player;
-                moveToPoint('player', display.centerW + 40, display.centerH + 90, true);
-                moveToPoint('dom', display.centerW - 40, display.centerH + 90, true);
-                if(!ui.dialogGroup.visible) {
-                    ui.skip.setVisible(true);
-                    ui.dialogGroup.setVisible(true);
-                }
-                dialog();
-            }, null, this);
+            setTimeout(function () {
+                let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
+                    col.active = false;
+                    mainConfig.playerMovable = false;
+                    mainConfig.domFollow = false;
+                    mainConfig.lookAt.player = mainObject.dom;
+                    mainConfig.lookAt.dom = mainObject.player;
+                    moveToPoint('player', mainObject.dom.x + 40, mainObject.dom.y + 20, true);
+                    if(!ui.dialogGroup.visible) {
+                        ui.skip.setVisible(true);
+                        ui.dialogGroup.setVisible(true);
+                    }
+                    dialog();
+                }, null, this);
+            }, 2000);
         }
         else if(index === 14){
+            donateSeed();
+            writeUserData();
             let light = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0).setAlpha(0);
             ui.group.add(light);
             scene.tweens.add({
                 targets: light,
                 alpha: 1,
                 duration: 6000,
+                else: Phaser.Math.Easing.Quintic.In,
                 onComplete: function () {
-
+                    let endlight = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0).setAlpha(1);
+                    ui.endingGroup.add(endlight);
+                    ui.endingGroup.setVisible(true);
+                    ui.endingLog.x = display.width;
+                    scene.tweens.add({
+                        targets: endlight,
+                        alpha: 0,
+                        duration: 3000,
+                        else: Phaser.Math.Easing.Quintic.In,
+                        onComplete: function () {
+                            scene.tweens.add({
+                                targets: ui.endingLog,
+                                x: 0,
+                                duration: 800,
+                                else: Phaser.Math.Easing.Quintic.Out,
+                                onComplete: function () {
+                                    status.scene = 'ending';
+                                    ui.skip.setVisible(true);
+                                }
+                            });
+                        }
+                    });
                 }
             });
+            function zoom() {
+                ui.skip.disableInteractive();
+                ui.cam.zoom = 1;
+                setTimeout(function () {
+                    ui.cam.pan(display.centerW, mainObject.player.y, 6000, Phaser.Math.Easing.Quintic.In, true);
+                    ui.cam.zoomTo(4, 6000, Phaser.Math.Easing.Quintic.In);
+                    ui.cam.on(Phaser.Cameras.Scene2D.Events.ZOOM_COMPLETE, () => {
+                        ui.dialogGroup.setVisible(true);
+                        dialog();
+                        ui.skip.setInteractive();
+                    });
+                }, 400);
+            }
         }
     }
 }
@@ -3019,7 +3170,15 @@ function moveFinished(character) {
     }
 }
 function setBackground(idx) {
-    ui.bg.play('bg' + idx);
+    if(idx === 5) {
+        if(mainConfig.seedNum <= 10) mainConfig.gameResult = 2;
+        else if(10 < mainConfig.seedNum && mainConfig.seedNum < 20) mainConfig.gameResult = 1;
+        else if(mainConfig.seedNum > 20) mainConfig.gameResult = 0;
+        ui.bg.play('bg5-' + mainConfig.gameResult);
+    }
+    else {
+        ui.bg.play('bg' + idx);
+    }
 }
 // TODO 씬 제어
 function chapterTitle(skip) {
@@ -3214,14 +3373,38 @@ function chapterTitle(skip) {
         }
         else if(chapterIdx === 5){
             mainObject.TitleEmitter.setVisible(true);
-            mainObject.TitleEmitter.start();
-            mainObject.TitleEmitter.setGravityX(20);
-            mainObject.TitleEmitter.setGravityY(40);
-            mainObject.TitleEmitter.setFrequency(200);
-            mainObject.TitleEmitter.setLifespan(12000);
+            if(mainConfig.debugMode){
+                mainObject.TitleEmitter.start();
+                mainObject.TitleEmitter.setGravityX(20);
+                mainObject.TitleEmitter.setGravityY(40);
+                mainObject.TitleEmitter.setFrequency(200);
+                mainObject.TitleEmitter.setLifespan(12000);
+            }
+
             mainObject.titlezone.x = -450;
             mainObject.titlezone.y = -320;
             mainObject.titlezone.height = 200;
+            setResult(mainConfig.gameResult);
+            function setResult(seed) {
+                object.list[7].setTexture('obj', 'tree-bottom' + seed).setScale(2).setOrigin(0, 1);
+                object.tree.setTexture('obj', 'tree-top' + seed).setScale(2).setOrigin(0);
+                object.treeshade.setTexture('obj', 'tree-shade' + seed).setScale(2).setOrigin(0);
+                if(seed === 0){
+                    object.list[7].setPosition(158, 402);
+                    object.tree.setPosition(82, 150);
+                    object.treeshade.setPosition(88, 366);
+                }
+                else if(seed === 1) {
+                    object.list[7].setPosition(158, 400);
+                    object.tree.setPosition(122, 232);
+                    object.treeshade.setPosition(120, 364);
+                }
+                else if(seed === 2){
+                    object.list[7].setPosition(168, 386);
+                    object.tree.setPosition(132, 282);
+                    object.treeshade.setPosition(150, 370);
+                }
+            }
 
             maps.navMesh.destroy();
             setVisibleObjects(false, [ui.skip, mainObject.gambler, object.list[5], object.list[6]]);
@@ -3252,6 +3435,21 @@ function chapterTitle(skip) {
         }
         writeUserData();
     }
+}
+function setEndingData(total) {
+    // 당신이 컴퓨터를 정지한 방법
+    // 당신이 구한 한 양의 수
+    // 당신이 낚은 물고기의 수
+    // 당신이 시공간을 감지한 횟수
+    // 당신이 기부한 씨앗의 수
+    // 시공간을 넘어 모인 씨앗의 수
+
+    mainConfig.endingData[0] = savedData.trace.engineer.how;
+    mainConfig.endingData[1] = savedData.trace.sheep.sheep;
+    mainConfig.endingData[2] = savedData.trace.fish;
+    mainConfig.endingData[3] = savedData.detectCount;
+    mainConfig.endingData[4] = savedData.totalseed;
+    mainConfig.endingData[5] = total;
 }
 
 // TODO 통신 제어
@@ -3292,11 +3490,13 @@ function getCurrentDate()
 const savedData = {
     index: null,
     totalseed: 0,
+    detectCount: 0,
     seed : [],
     clear: [],
     trace: {
         engineer: {how: null, path: []},
-        sheep: [],
+        sheep: {sheep: 0, path: []},
+        fish: 0,
         gambler: []
     },
     time : null
@@ -3347,7 +3547,15 @@ function initUserData(value) {
         writeUserData();
     });
 }
-
+function readTotalSeed() {
+    const db = getDatabase();
+    let seedRef = query(ref(db, 'seed'));
+    get(seedRef).then((snapshot) => {
+        if (snapshot.exists()) {
+            setEndingData(snapshot.val());
+        }
+    });
+}
 function readData(level) {
     mainConfig.signalReadCount++;
     if(mainConfig.signalReadCount > 20){
@@ -3443,6 +3651,23 @@ function toggleCounter() {
                 return post + 1;
             }).then((value) => {
                 initUserData(value.snapshot.val());
+            });
+        }
+    }, {
+        onlyOnce: true
+    });
+}
+function donateSeed() {
+    const db = getDatabase();
+    const uidRef = query(ref(db, 'users/'), orderByKey(), equalTo(serverData.uid));
+    const seedRef = query(ref(db, 'seed'));
+
+    onValue(uidRef, (snapshot) => {
+        if(snapshot.val()){
+            runTransaction(seedRef, (post) => {
+                return post + mainConfig.seedNum;
+            }).then(()=>{
+                readTotalSeed();
             });
         }
     }, {
