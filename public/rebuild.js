@@ -67,8 +67,12 @@ const mainConfig = {
     pcTimerPushed : false,
     pcTimer : 0,
     pcCrackCount : 0,
+
     pcRecordOn: false,
     pcRecord: [],
+    sheepRecordOn: false,
+    sheepRecord: [],
+
     clear : [false, false, false, false, false],
     reward: [0, 0, 0, 0, 0],
     livingSheep: 0,
@@ -114,7 +118,11 @@ const mainConfig = {
     startGamble: false,
 
     minigameTween: null,
-    signalTween: null
+    signalTween: null,
+    signalReadCount: 0,
+    signalGambleTween: [],
+
+    forestSeed: 5
 }
 const timer = {};
 const event = {};
@@ -157,11 +165,15 @@ function preload() {
     this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
     // particle
     this.load.atlas("leaf", "image/leaf.png", 'image/leaf.json');
-
+    // audio
+    this.load.audio('bgm', 'audio/bgm.mp3');
     //sample
     this.load.image('sample', 'image/sample/4.png');
 }
 function create() {
+    mainObject.bgm = this.sound.add('bgm');
+    mainObject.bgm.loop = true;
+    mainObject.bgm.play();
     const resetConfig = {};
     Object.keys(mainConfig).forEach(function (v) {
         resetConfig[v] = mainConfig[v];
@@ -185,7 +197,17 @@ function create() {
                 mainConfig.pcRecord.shift();
             }
             let pos = {x: pointer.x, y: pointer.y};
+            if(pos.y > 600) return;
             mainConfig.pcRecord.push(pos);
+        }
+        if(status.chapterIdx === 2 && mainConfig.sheepRecordOn){
+            // 양건너기 기록
+            if(mainConfig.sheepRecord.length > 19){
+                mainConfig.sheepRecord.shift();
+            }
+            let pos = {x: pointer.x, y: pointer.y};
+            if(pos.y > 600) return;
+            mainConfig.sheepRecord.push(pos);
         }
     });
     this.input.on('pointerup', pointer => {
@@ -945,8 +967,23 @@ function createUIObjects(scene) {
     ui.signalHelp = scene.add.text(display.centerW, display.centerH, helpText, fontConfig)
         .setAlign('center').setOrigin(0.5).setFontSize(16).setLineSpacing(8);
     ui.signalHelpGroup = scene.add.container().add([ui.signalHelpBox, ui.signalHelp]);
-    ui.signalBtn = scene.add.sprite(display.centerW ,display.height + 90, 'ui', 'signal-on').setOrigin(0.5, 1).setScale(3).setInteractive();
-
+    ui.signalBtn = scene.add.sprite(display.centerW ,display.height + 120, 'ui', 'signal-on').setOrigin(0.5, 1).setScale(3).setInteractive();
+    ui.signalGamblerBox = scene.add.rectangle(0, 0, display.width, display.height, 0x000000, 0.7).setOrigin(0).setInteractive();
+    ui.signalGambler = [];
+    const Coloredfont = {font: '48px "dgm"', color: '#000'};
+    for (let i = 0; i < 3; i++) {
+        ui.signalGambler[i] = scene.add.text(ui.doorlist[i].x + 96, ui.doorlist[i].y + 114, '0%', Coloredfont)
+            .setAlign('left').setOrigin(1).setLineSpacing(8).setStroke('#0f0', 6);
+    }
+    ui.signalGamblerTitle = scene.add.text(display.centerW, 222, '다른 세계의 선택을 감지했다.', fontConfig)
+        .setAlign('center').setOrigin(0.5).setFontSize(16).setStroke('#000', 2);
+    ui.signalGamblerGroup = scene.add.container().add([ui.signalGamblerBox, ui.signalGamblerTitle]).setVisible(false);
+    ui.signalGamblerGroup.add(ui.signalGambler);
+    ui.signalGamblerBox.on('pointerup', pointer => {
+        if(mainConfig.signalGambleTween[2] !== null) return;
+        ui.signalGamblerGroup.setVisible(false);
+        ui.signalBtn.setInteractive();
+    });
     ui.signalHelpBox.on('pointerup', function () {
         ui.signalHelpGroup.setVisible(false);
         signalHelpBool = false;
@@ -969,6 +1006,28 @@ function createUIObjects(scene) {
             readData(level[status.chapterIdx]);
         }
     });
+
+    // 엔딩
+    ui.endingGroup = scene.add.container();
+    ui.endingText = [];
+    const endingFont = {font: '48px "dgm"', color: '#000'};
+    const endingCount = {font: '48px "dgm"', color: '#0f0'};
+
+    let bg = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0);
+
+    ui.endingText[0] = scene.add.text(display.centerW, 160, '당신이 기부한 씨앗의 수', endingFont)
+        .setAlign('left').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
+    ui.endingText[1] = scene.add.text(display.centerW, 300, '시공간을 넘어 모인 씨앗의 수', endingFont)
+        .setAlign('left').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
+    ui.endingtotalseed = scene.add.text(display.centerW, 140, '16', endingCount)
+        .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(80).setStroke('#000', 6);
+    ui.endingseed = scene.add.text(display.centerW, 280, '74', endingCount)
+        .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(80).setStroke('#000', 6);
+    ui.endingGroup.add([bg, ui.endingtotalseed, ui.endingseed]);
+    ui.endingGroup.add(ui.endingText);
+    ui.endingGroup.setVisible(false);
+
+    //ui.endingGroup.setVisible(false);
 
     // 스테이지 별 미니게임 씬 오브젝트 추가
     ui.gameScene = [];
@@ -1074,7 +1133,7 @@ function createParticles(scene) {
         scale: 2,
         emitZone: { source: emitZone }
     });
-    let titlezone = new Phaser.Geom.Rectangle(0, -60, display.width, 10);
+    mainObject.titlezone = new Phaser.Geom.Rectangle(0, -80, display.width + 320, 40);
     mainObject.TitleParticle = scene.add.particles('leaf');
     mainObject.TitleEmitter = mainObject.TitleParticle.createEmitter({
         frame: [ '0', '1', '2', '3'],
@@ -1085,10 +1144,10 @@ function createParticles(scene) {
         gravityY: 60,
         lifespan: 6000,
         quantity: 1,
-        frequency: 400,
+        frequency: 250,
         scale: 2,
         rotate: { start: 0, end: 360, ease: 'Back.easeOut' },
-        emitZone: { source: titlezone }
+        emitZone: { source: mainObject.titlezone }
     });
 }
 function createObjects(scene) {
@@ -1101,6 +1160,10 @@ function createObjects(scene) {
     object.list[4] = scene.add.sprite(110, 506, 'keyboard', 'pc-console').setScale(2).setOrigin(0, 1).setVisible(false);
     object.list[5] = scene.add.sprite(70, 654, 'obj', 'gate').setScale(2).setOrigin(0, 1).setVisible(false);
     object.list[6] = scene.add.sprite(148, 232, 'obj', 'arrow').setScale(2).setOrigin(0, 1).setVisible(false);
+    object.list[7] = scene.add.sprite(158, 402, 'obj', 'tree-bottom').setScale(2).setOrigin(0, 1).setVisible(false);
+
+    object.tree = scene.add.sprite(82, 150, 'obj', 'tree-top').setScale(2).setOrigin(0).setVisible(false);
+    object.treeshade = scene.add.sprite(88, 366, 'obj', 'tree-shade').setScale(2).setOrigin(0).setVisible(false);
 
     // 위치 맞추기용
     object.sample = scene.add.sprite(display.centerW, display.centerH, 'sample').setOrigin(0.5).setAlpha(0).setScale(2);
@@ -1111,7 +1174,7 @@ function setLayer(scene) {
     mainObject.layer = scene.add.layer();
 
     mainObject.bg = scene.add.container();
-    mainObject.bg.add([ui.bg, ui.smoke, ui.next, ui.bridge, ui.gamblePos]);
+    mainObject.bg.add([ui.bg, ui.smoke, ui.next, ui.bridge, ui.gamblePos, object.treeshade]);
 
     mainObject.group = scene.add.container();
     mainObject.group.add([mainObject.player, mainObject.dom, mainObject.engineer, mainObject.man, mainObject.fishman, mainObject.gambler]);
@@ -1121,15 +1184,16 @@ function setLayer(scene) {
     }
 
     ui.group = scene.add.container();
-    ui.group.add([ui.background, ui.mark, ui.gameGroup, ui.signalBtn, ui.dialogGroup, ui.rewardGroup, ui.taskGroup, ui.largeText, ui.white, ui.title, ui.dark, ui.skip]);
+    ui.group.add([ui.background, ui.mark, ui.gameGroup, ui.signalBtn, ui.dialogGroup, ui.rewardGroup, ui.taskGroup, ui.largeText, ui.white, ui.title, mainObject.TitleParticle, ui.dark, ui.signalGamblerGroup, ui.skip]);
 
     // 레이어 정렬
     mainObject.layer.add(mainObject.bg);
     mainObject.layer.add(mainObject.group);
+    mainObject.layer.add(object.tree);
     mainObject.layer.add(mainObject.particles);
     mainObject.layer.add(ui.group);
     mainObject.layer.add(ui.effectGroup);
-    mainObject.layer.add(mainObject.TitleParticle);
+    mainObject.layer.add(ui.endingGroup);
     mainObject.layer.add(object.sample);
 }
 function setAnimations(scene) {
@@ -1337,8 +1401,9 @@ function signalToggle(visible) {
     let scene = game.scene.scenes[0];
     mainConfig.signalTween?.stop();
     if(visible){
+        ui.signalBtn.setInteractive();
         ui.signalBtn.setVisible(true);
-        ui.signalBtn.y = display.height + 90;
+        ui.signalBtn.y = display.height + 120;
         mainConfig.signalTween = scene.tweens.add({
             targets: ui.signalBtn,
             y: display.height + 18,
@@ -1352,7 +1417,7 @@ function signalToggle(visible) {
     else {
         mainConfig.signalTween = game.scene.scenes[0].tweens.add({
             targets: ui.signalBtn,
-            y: display.height + 60,
+            y: display.height + 120,
             duration: 800,
             ease: Phaser.Math.Easing.Quintic.In,
             onComplete: function (){
@@ -1979,6 +2044,10 @@ function selectBridge(index, bridge) {
         if(mainConfig.bridgeSelection === 5){
             // 양 퀘스트 완료
             signalToggle(false);
+            mainConfig.sheepRecordOn = false;
+            savedData.trace.sheep = {sheep: mainObject.sheeps.length, path: mainConfig.sheepRecord};
+            writeUserData();
+            console.log(savedData.trace)
             let left = 0;
             f();
             function f() {
@@ -2078,6 +2147,7 @@ function sheepFinish() {
 function checkSignal(arr) {
     // TODO 시그널
     let count = 0;
+    console.log('check')
     blink();
     function blink() {
         let sign =  ui.signal.get();
@@ -2153,6 +2223,12 @@ function skip() {
     else if(status.scene === 'chapter'){
         if(ui.rewardGroup.visible === true){
             setReward(false, null);
+            if(status.chapterIdx === 5) {
+                setTimeout(function () {
+                    mainConfig.playerMovable = true;
+                }, 10);
+                return;
+            }
             ui.dialogGroup.setVisible(true);
         }
         dialog();
@@ -2356,6 +2432,7 @@ function eventByIndex(){
             });
             setTask(true);
             signalToggle(true);
+            mainConfig.sheepRecordOn = true;
         }
         else if (index === 13){
             mainObject.player.setFlipX(false);
@@ -2544,8 +2621,11 @@ function eventByIndex(){
     }
     else if(chapter === 4) {
         if (index === 2) {
-            //gamble(true);
-            //ui.doorlist[0].play('door-hint-open');
+            mainObject.TitleEmitter.start();
+            mainObject.TitleEmitter.setGravityX(20);
+            mainObject.TitleEmitter.setGravityY(40);
+            mainObject.TitleEmitter.setFrequency(200);
+            mainObject.TitleEmitter.setLifespan(12000);
             setTask(true);
             moveEnable();
             let col = scene.physics.add.overlap(mainObject.player, ui.gamblePos, function () {
@@ -2771,6 +2851,91 @@ function eventByIndex(){
                     });
                 }, 200);
             }
+        }
+    }
+    else if(chapter === 5) {
+        if(index === 2){
+            moveEnable();
+            let treeCol = scene.add.rectangle(display.centerW, display.centerH + 80, display.width, 40, 0x000000).setVisible(false);
+            scene.physics.add.existing(treeCol);
+            let col = scene.physics.add.overlap(mainObject.player, treeCol, function () {
+                treeCol.destroy();
+                col.active = false;
+                mainConfig.playerMovable = false;
+                mainConfig.domFollow = false;
+                mainConfig.lookAt.player = mainObject.dom;
+                mainConfig.lookAt.dom = mainObject.player;
+                moveToPoint('player', display.centerW + 40, display.centerH + 90, true);
+                moveToPoint('dom', display.centerW - 40, display.centerH + 90, true);
+                if(!ui.dialogGroup.visible) {
+                    ui.skip.setVisible(true);
+                    ui.dialogGroup.setVisible(true);
+                }
+                dialog();
+            }, null, this);
+        }
+        else if(index === 11){
+            setTimeout(function () {
+                mainObject.dom.play('dom-stand');
+                mainObject.player.play('player-stand');
+                mainConfig.playerMovable = true;
+                mainConfig.domFollow = false;
+            }, 0);
+            let seed = scene.add.rectangle(0,0,16, 16, 0x000000).setVisible(false);
+            scene.physics.add.existing(seed);
+            seedColect();
+            function seedColect() {
+                seed.setPosition(display.centerW + getRandomInt(160), display.height - Math.round(Math.random() * 200));
+                let seedCol = scene.physics.add.overlap(mainObject.player, seed, function () {
+                    if(mainConfig.forestSeed > 0){
+                        seedCol.active = false;
+                        mainConfig.forestSeed--;
+                        seedDrop();
+                        seedColect();
+                    }
+                }, null, this);
+            }
+            function seedDrop() {
+                mainConfig.playerMovable = false;
+                moveToPoint('player', mainObject.player.x, mainObject.player.y, false);
+                let seedNum = Math.ceil(Math.random() * 3);
+                setTimeout(() => ui.skip.setVisible(true), 400);
+                ui.rewardGroup.setVisible(true);
+                ui.rewardMsg.text = '씨앗을 ' + seedNum + '개 발견했다!'
+                mainConfig.seedNum += seedNum;
+                savedData.totalseed = mainConfig.seedNum;
+                for (let i = 0; i < mainConfig.reward.length; i++) {
+                    savedData.seed[i] = mainConfig.reward[i];
+                }
+                writeUserData();
+            }
+            let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
+                status.index = 12;
+                col.active = false;
+                mainConfig.playerMovable = false;
+                mainConfig.domFollow = false;
+                mainConfig.lookAt.player = mainObject.dom;
+                mainConfig.lookAt.dom = mainObject.player;
+                moveToPoint('player', display.centerW + 40, display.centerH + 90, true);
+                moveToPoint('dom', display.centerW - 40, display.centerH + 90, true);
+                if(!ui.dialogGroup.visible) {
+                    ui.skip.setVisible(true);
+                    ui.dialogGroup.setVisible(true);
+                }
+                dialog();
+            }, null, this);
+        }
+        else if(index === 14){
+            let light = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0).setAlpha(0);
+            ui.group.add(light);
+            scene.tweens.add({
+                targets: light,
+                alpha: 1,
+                duration: 6000,
+                onComplete: function () {
+
+                }
+            });
         }
     }
 }
@@ -3025,6 +3190,9 @@ function chapterTitle(skip) {
             maps.navMesh.destroy();
             setVisibleObjects(false, [ui.skip, mainObject.fishman]);
             setVisibleObjects(true, [mainObject.gambler, object.list[5], object.list[6]]);
+            ui.fishingGroup.destroy();
+            ui.fishingCastGroup.destroy();
+            mainObject.fishman.destroy();
             maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[4], 12.5);
             mainObject.player.x = -40;
             mainObject.dom.x = -120;
@@ -3045,8 +3213,21 @@ function chapterTitle(skip) {
             }
         }
         else if(chapterIdx === 5){
+            mainObject.TitleEmitter.setVisible(true);
+            mainObject.TitleEmitter.start();
+            mainObject.TitleEmitter.setGravityX(20);
+            mainObject.TitleEmitter.setGravityY(40);
+            mainObject.TitleEmitter.setFrequency(200);
+            mainObject.TitleEmitter.setLifespan(12000);
+            mainObject.titlezone.x = -450;
+            mainObject.titlezone.y = -320;
+            mainObject.titlezone.height = 200;
+
             maps.navMesh.destroy();
             setVisibleObjects(false, [ui.skip, mainObject.gambler, object.list[5], object.list[6]]);
+            setVisibleObjects(true, [object.tree, object.treeshade, object.list[7]]);
+            mainObject.gambler.destroy();
+            ui.gamblePos.destroy();
             maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[5], 12.5);
             mainObject.player.x = display.centerW + 20;
             mainObject.dom.x = display.centerW - 20;
@@ -3168,11 +3349,17 @@ function initUserData(value) {
 }
 
 function readData(level) {
+    mainConfig.signalReadCount++;
+    if(mainConfig.signalReadCount > 20){
+        // 20번 시도에도 없으면 리턴
+        mainConfig.signalReadCount = 0;
+        return;
+    }
     let r = 0;
     const db = getDatabase();
-    if(level === 'engineer'){
+    if(level === 'engineer' || level === 'sheep'){
         const dbRef = ref(getDatabase());
-        get(child(dbRef, 'users/' + serverData.uid + '/index')).then((snapshot) => {
+        get(child(dbRef, 'userCount/users')).then((snapshot) => {
             if (snapshot.exists()) {
                 r = Math.round(Math.random() * snapshot.val());
             }
@@ -3187,8 +3374,6 @@ function readData(level) {
                             if(value.trace[level]) serverData[level] = value.trace[level];
                         }
                     })
-                } else {
-                    readData(level);
                 }
             }).then(() => {
                 if(serverData[level]) {
@@ -3201,14 +3386,45 @@ function readData(level) {
         });
     }
     else if(level === 'gambler'){
+        let selection = [];
+        let total = 0;
         let gamblerRef = query(ref(db, 'gambler/'));
         get(gamblerRef, 'gambler/').then((snapshot) => {
             if (snapshot.exists()) {
                 snapshot.forEach((value) => {
-                    console.log(value.val());
+                    selection.push(value.val());
+                    total += value.val();
                 })
             }
-        })
+        }).then(()=>{
+           let percent = [];
+            for (let i = 0; i < 3; i++) {
+                percent[i] = Math.round(selection[i] / total * 100);
+                if(percent[i] < 10) ui.signalGambler[i].x = ui.doorlist[i].x + 86
+                else ui.signalGambler[i].x = ui.doorlist[i].x + 96
+            }
+            ui.signalGamblerGroup.setVisible(true);
+            percentUp();
+            function percentUp() {
+                for (let i = 0; i < 3; i++) {
+                    mainConfig.signalGambleTween[i] = game.scene.scenes[0].tweens.addCounter({
+                        from: 0,
+                        to: percent[i],
+                        ease: Phaser.Math.Easing.Quartic.Out,
+                        duration: 1600,
+                        repeat: 0,
+                        onUpdate: function (tween)
+                        {
+                            let value = Math.round(tween.getValue());
+                            ui.signalGambler[i].text = value + '%';
+                        },
+                        onComplete: function () {
+                            mainConfig.signalGambleTween[i] = null;
+                        }
+                    });
+                }
+            }
+        });
     }
 }
 

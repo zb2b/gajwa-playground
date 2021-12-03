@@ -22,7 +22,7 @@
   ,
   {
         "filename": "rock2",
-        "frame":  { "x": 0, "y" :33, "w" :63, "h" :40 },
+        "frame":  { "x": 94, "y" :0, "w" :63, "h" :40 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :63, "h" :40 },
@@ -32,7 +32,7 @@
   ,
   {
         "filename": "particle",
-        "frame":  { "x": 0, "y" :73, "w" :7, "h" :7 },
+        "frame":  { "x": 86, "y" :32, "w" :7, "h" :7 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :7, "h" :7 },
@@ -42,7 +42,7 @@
   ,
   {
         "filename": "pc-0",
-        "frame":  { "x": 0, "y" :84, "w" :74, "h" :92 },
+        "frame":  { "x": 0, "y" :40, "w" :74, "h" :92 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :74, "h" :92 },
@@ -52,7 +52,7 @@
   ,
   {
         "filename": "pc-1",
-        "frame":  { "x": 74, "y" :84, "w" :74, "h" :92 },
+        "frame":  { "x": 74, "y" :40, "w" :74, "h" :92 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :74, "h" :92 },
@@ -62,7 +62,7 @@
   ,
   {
         "filename": "pc-2",
-        "frame":  { "x": 148, "y" :84, "w" :74, "h" :92 },
+        "frame":  { "x": 148, "y" :40, "w" :74, "h" :92 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :74, "h" :92 },
@@ -72,7 +72,7 @@
   ,
   {
         "filename": "gate",
-        "frame":  { "x": 0, "y" :190, "w" :106, "h" :90 },
+        "frame":  { "x": 0, "y" :270, "w" :106, "h" :90 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :106, "h" :90 },
@@ -82,7 +82,7 @@
   ,
   {
         "filename": "platform",
-        "frame":  { "x": 112, "y" :190, "w" :22, "h" :18 },
+        "frame":  { "x": 160, "y" :14, "w" :22, "h" :18 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :22, "h" :18 },
@@ -92,7 +92,7 @@
   ,
   {
         "filename": "arrow",
-        "frame":  { "x": 112, "y" :209, "w" :16, "h" :20 },
+        "frame":  { "x": 182, "y" :12, "w" :16, "h" :20 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :20 },
@@ -102,7 +102,7 @@
   ,
   {
         "filename": "pc-off",
-        "frame":  { "x": 222, "y" :84, "w" :74, "h" :92 },
+        "frame":  { "x": 222, "y" :40, "w" :74, "h" :92 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :74, "h" :92 },
@@ -112,11 +112,41 @@
   ,
   {
         "filename": "pc-broken",
-        "frame":  { "x": 148, "y" :176, "w" :74, "h" :92 },
+        "frame":  { "x": 0, "y" :132, "w" :74, "h" :92 },
         "rotated": false,
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :74, "h" :92 },
         "sourceSize": { "w" :74, "h" :92 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "tree-shade",
+        "frame":  { "x": 112, "y" :321, "w" :91, "h" :39 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :91, "h" :39 },
+        "sourceSize": { "w" :91, "h" :39 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "tree-top",
+        "frame":  { "x": 74, "y" :132, "w" :98, "h" :106 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :98, "h" :106 },
+        "sourceSize": { "w" :98, "h" :106 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "tree-bottom",
+        "frame":  { "x": 208, "y" :6, "w" :22, "h" :26 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :22, "h" :26 },
+        "sourceSize": { "w" :22, "h" :26 },
         "pivot":  { "x": 0, "y" :1 }
   }
   ]
