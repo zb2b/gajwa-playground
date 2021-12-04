@@ -111,6 +111,7 @@ const mainConfig = {
     fishPoint: 0,
     fishRun: 0,
     retryFishing: 0,
+    floatOnAir: false,
 
     gambleSelection: 2,
     gambleFirst: null,
@@ -160,7 +161,7 @@ function preload() {
     this.load.image("frame", "image/ending-frame.png");
     this.load.spritesheet('title', 'image/title.png', { frameWidth: 180, frameHeight: 390, endFrame: 1 });
     this.load.spritesheet('signal', 'image/signal.png', { frameWidth: 16, frameHeight: 16, endFrame: 12 });
-    this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 11 });
+    this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 12 });
     this.load.atlas('minigame', 'image/minigame.png', 'image/minigame.json');
     this.load.spritesheet('pc-err', 'image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
     this.load.spritesheet('float-water', 'image/float-water.png', { frameWidth: 64, frameHeight: 32, endFrame: 18 });
@@ -174,8 +175,6 @@ function preload() {
     this.load.atlas("leaf", "image/leaf.png", 'image/leaf.json');
     // audio
     this.load.audio('bgm', 'audio/bgm.mp3');
-    //sample
-    this.load.image('sample', 'image/sample/4.png');
 }
 function create() {
     mainObject.bgm = this.sound.add('bgm');
@@ -549,10 +548,16 @@ function createUIObjects(scene) {
     });
 
     ui.bg = scene.add.sprite(0, 0, 'bg').setOrigin(0).setScale(2);
+
     ui.smoke = scene.add.sprite(200, 100).play('smoke').setScale(2).setVisible(false);
 
     ui.skip = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0)
         .setInteractive();
+    ui.endingSkip = scene.add.rectangle(0, 0, display.centerW, display.height, 0x00ff00, 0).setVisible(false).setOrigin(0).setInteractive();
+    ui.endingSkip.on('pointerup', pointer => {
+        if(mainConfig.endingIdx > 0) mainConfig.endingIdx--;
+        endingMotion();
+    });
     ui.background = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000);
 
     ui.dark = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000).setVisible(false);
@@ -743,6 +748,7 @@ function createUIObjects(scene) {
                                 // 최초 완료시
                                 mainConfig.clear[2] = true;
                                 mainConfig.reward[2] = 2;
+                                ui.fishingPlayer.setInteractive();
                             }
                             else {
                                 // 추가 완료시
@@ -755,6 +761,64 @@ function createUIObjects(scene) {
                 }, 1200);
             }
         }
+    });
+    let fishingQuit = false;
+    ui.fishingPlayer.on('pointerup', function () {
+        if(!mainConfig.clear[2] || fishingQuit || mainConfig.fishingNow || mainConfig.fishCasting !== null || mainConfig.floatOnAir) return;
+        let f = (ui.fishingPlayer.anims.currentAnim.key === 'fishing-wait' || ui.fishingPlayer.anims.currentAnim.key === 'fishing-catch');
+        if(!f) return;
+        fishingQuit = true;
+        mainConfig.fishingDone = true;
+        if(ui.fishingFloat.visible){
+            if(ui.fishingPlayer.anims.currentAnim.key !== 'fishing-cancel'){
+                ui.fishingPlayer.play('fishing-cancel');
+            }
+        }
+        mainConfig.fishWait = false;
+        ui.fishingMark.setVisible(false);
+        clearTimeout(mainConfig.fishingTimer);
+        clearTimeout(mainConfig.fishingFailTimer);
+        mainConfig.fishCasting = null;
+        mainConfig.fishingTimer = null;
+
+        ui.task.text = "낚시를 다시 하거나 모험을 계속하자";
+        ui.fishingCastbar.width = 0;
+        ui.fishingCastbar.setOrigin(0.5);
+        scene.tweens.add({
+            targets: ui.gameGroup,
+            y: -860,
+            duration: 2000,
+            ease: Phaser.Math.Easing.Quintic.In,
+            onComplete: function () {
+                fishingQuit = false;
+                moveEnable();
+                let col = scene.physics.add.overlap(mainObject.player, mainObject.fishman, function () {
+                    col.active = false;
+                    mainConfig.playerMovable = false;
+                    mainConfig.domFollow = false;
+                    mainConfig.lookAt.player = mainObject.fishman;
+                    mainConfig.lookAt.dom = mainObject.fishman;
+                    moveToPoint('player', mainObject.fishman.x - 20, mainObject.fishman.y + 60, false);
+                    moveToPoint('dom', mainObject.fishman.x - 40, mainObject.fishman.y + 80, false);
+                    ui.gameGroup.y = 600;
+                    ui.gameGroup.setVisible(true);
+                    ui.fishingBar.setSize(42, mainConfig.fishingBarSize * 3);
+                    ui.fishingBar.body.setSize(42, mainConfig.fishingBarSize * 3);
+                    ui.fishingPlayer.play('fishing-wait');
+                    ui.fishingCastBoxB.setTexture('ui', 'power1').setOrigin(0.5);
+                    ui.fishingFloat.setTexture('ui', 'float').setOrigin(0.5);
+                    mainConfig.fishingDone = false;
+                    mainConfig.fishingRodOn = false;
+                    mainConfig.fishingNow = false;
+                    scene.tweens.add({
+                        targets: ui.gameGroup,
+                        y: 0,
+                        duration: 2000,
+                        ease: Phaser.Math.Easing.Quintic.Out,
+                    });
+                });
+            }
+        });
     });
 
     ui.fishingCastGroup = scene.add.container().setPosition(display.centerW, 140);
@@ -1261,16 +1325,17 @@ function createObjects(scene) {
     object.list[2] = scene.add.sprite(234, 596 + 80, 'obj', 'rock2').setScale(2).setOrigin(0, 1).setVisible(false);
     object.list[3] = scene.add.sprite(58 * 2, 143 * 2 + 92 * 2,'obj', 'pc-0').setScale(2).setOrigin(0, 1).play('pc').setVisible(false);
     object.list[4] = scene.add.sprite(110, 506, 'keyboard', 'pc-console').setScale(2).setOrigin(0, 1).setVisible(false);
-    object.list[5] = scene.add.sprite(70, 654, 'obj', 'gate').setScale(2).setOrigin(0, 1).setVisible(false);
-    object.list[6] = scene.add.sprite(148, 232, 'obj', 'arrow').setScale(2).setOrigin(0, 1).setVisible(false);
-    object.list[7] = scene.add.sprite(158, 402, 'obj', 'tree-bottom0').setScale(2).setOrigin(0, 1).setVisible(false);
+
+    object.list[5] = scene.add.sprite(92, 396, 'obj', 'fishing-0').setScale(2).setOrigin(0, 1).setVisible(false);
+    object.list[6] = scene.add.sprite(46, 316, 'obj', 'fishing-1').setScale(2).setOrigin(0, 1).setVisible(false);
+
+    object.list[7] = scene.add.sprite(70, 654, 'obj', 'gate').setScale(2).setOrigin(0, 1).setVisible(false);
+    object.list[8] = scene.add.sprite(148, 232, 'obj', 'arrow').setScale(2).setOrigin(0, 1).setVisible(false);
+    object.list[9] = scene.add.sprite(158, 402, 'obj', 'tree-bottom0').setScale(2).setOrigin(0, 1).setVisible(false);
 
     object.tree = scene.add.sprite(82, 150, 'obj', 'tree-top0').setScale(2).setOrigin(0).setVisible(false);
+    object.treeGroup = scene.add.container().add(object.tree);
     object.treeshade = scene.add.sprite(88, 366, 'obj', 'tree-shade0').setScale(2).setOrigin(0).setVisible(false);
-
-    // 위치 맞추기용
-    object.sample = scene.add.sprite(display.centerW, display.centerH, 'sample').setOrigin(0.5).setAlpha(0).setScale(2);
-
 }
 function setLayer(scene) {
     // TODO 레이어 및 그룹 오브젝트 생성
@@ -1287,17 +1352,16 @@ function setLayer(scene) {
     }
 
     ui.group = scene.add.container();
-    ui.group.add([ui.background, ui.mark, ui.gameGroup, ui.signalBtn, ui.dialogGroup, ui.rewardGroup, ui.taskGroup, ui.largeText, ui.esc, ui.title, mainObject.TitleParticle, ui.dark, ui.signalGamblerGroup, ui.skip]);
+    ui.group.add([ui.background, ui.mark, ui.gameGroup, ui.signalBtn, ui.dialogGroup, ui.rewardGroup, ui.taskGroup, ui.largeText, ui.esc, ui.title, mainObject.TitleParticle, ui.dark, ui.signalGamblerGroup, ui.skip, ui.endingSkip]);
 
     // 레이어 정렬
     mainObject.layer.add(mainObject.bg);
     mainObject.layer.add(mainObject.group);
-    mainObject.layer.add(object.tree);
+    mainObject.layer.add(object.treeGroup);
     mainObject.layer.add(mainObject.particles);
     mainObject.layer.add(ui.group);
     mainObject.layer.add(ui.effectGroup);
     mainObject.layer.add(ui.endingGroup);
-    mainObject.layer.add(object.sample);
 }
 function setAnimations(scene) {
     // TODO 애니메이션 추가
@@ -1366,29 +1430,30 @@ function setAnimations(scene) {
     });
     scene.anims.create({
         key: 'bg3',
-        frames: scene.anims.generateFrameNumbers('bg', { start: 4, end: 4 }),
-        frameRate: 1,
+        frames: scene.anims.generateFrameNumbers('bg', { start: 4, end: 5 }),
+        repeat: -1,
+        frameRate: 2,
     });
     scene.anims.create({
         key: 'bg4',
-        frames: scene.anims.generateFrameNumbers('bg', { start: 5, end: 5 }),
+        frames: scene.anims.generateFrameNumbers('bg', { start: 6, end: 6 }),
         frameRate: 1,
     });
     scene.anims.create({
         key: 'bg5-0',
-        frames: scene.anims.generateFrameNumbers('bg', { start: 6, end: 7 }),
+        frames: scene.anims.generateFrameNumbers('bg', { start: 7, end: 8 }),
         repeat: -1,
         frameRate: 1,
     });
     scene.anims.create({
         key: 'bg5-1',
-        frames: scene.anims.generateFrameNumbers('bg', { start: 8, end: 9 }),
+        frames: scene.anims.generateFrameNumbers('bg', { start: 9, end: 10 }),
         repeat: -1,
         frameRate: 1,
     });
     scene.anims.create({
         key: 'bg5-2',
-        frames: scene.anims.generateFrameNumbers('bg', { start: 10, end: 11 }),
+        frames: scene.anims.generateFrameNumbers('bg', { start: 11, end: 12 }),
         repeat: -1,
         frameRate: 1,
     });
@@ -1652,14 +1717,18 @@ function fishingBack(catched) {
     path[2] = {x: target.x, y: target.y};
 
     ui.fishingFloat.stop();
-    if(catched) ui.fishingFloat.setTexture('ui', 'fish').setOrigin(0.5);
+    // TODO 물고기 잡혔을때
+    if(catched) {
+        ui.fishingFloat.setTexture('ui', 'fish' + mainConfig.retryFishing).setOrigin(0.5);
+    }
     else ui.fishingFloat.setTexture('ui', 'float').setOrigin(0.5);
-
+    mainConfig.floatOnAir = true;
     mainConfig.fishFloatTween[0] = scene.tweens.add({
         targets: ui.fishingFloat,
         x: path[2].x,
         duration: 1200,
-        ease: Phaser.Math.Easing.Linear
+        ease: Phaser.Math.Easing.Linear,
+        onComplete: function (){ mainConfig.floatOnAir = false; }
     });
     mainConfig.fishFloatTween[1] = scene.tweens.add({
         targets: ui.fishingFloat,
@@ -1674,7 +1743,7 @@ function fishingBack(catched) {
                 ease: Phaser.Math.Easing.Quartic.In,
                 onComplete: function () {
                     if(catched){
-                        ui.fishingPlayer.play('fishing-done');
+                        ui.fishingPlayer.play('fishing-done' + mainConfig.retryFishing);
                     }
                     else {
                         ui.fishingPlayer.play('fishing-wait');
@@ -1703,11 +1772,15 @@ function fishingCastFloat(power) {
     path[1] = {x: lerp(ui.fishingFloat.x, target.x, 0.85) , y: lerp(ui.fishingFloat.y - 160 - Math.round(power * 0.5), target.y - 160 - Math.round(power * 0.5), 0.5)};
     path[2] = {x: target.x, y: target.y};
     let speed = 1200 + Math.round(power)
+    mainConfig.floatOnAir = true;
     mainConfig.fishFloatTween[0] = scene.tweens.add({
         targets: ui.fishingFloat,
         x: path[2].x,
         duration: speed,
-        ease: Phaser.Math.Easing.Linear
+        ease: Phaser.Math.Easing.Linear,
+        onComplete: function () {
+            mainConfig.floatOnAir = false;
+        }
     });
     mainConfig.fishFloatTween[1] = scene.tweens.add({
         targets: ui.fishingFloat,
@@ -2390,6 +2463,9 @@ function skip() {
         }
         if(mainConfig.endingIdx < ui.logText.length - 1) mainConfig.endingIdx++;
         endingMotion();
+        if(mainConfig.endingIdx === 1){
+            ui.endingSkip.setVisible(true);
+        }
     }
 }
 function dialog() {
@@ -2941,7 +3017,7 @@ function eventByIndex(){
                             setTimeout(() => ui.skip.setVisible(true), 400);
                             ui.rewardGroup.setVisible(true);
                             ui.rewardMsg.text = '씨앗을 ' + count + '개 잃었다!'
-                            mainConfig.seedNum += count;
+                            mainConfig.seedNum -= count;
                             mainConfig.reward[3] = -count;
                             savedData.seed[3] = mainConfig.reward[3];
                             writeUserData();
@@ -3059,7 +3135,22 @@ function eventByIndex(){
                     ui.dialogGroup.setVisible(true);
                 }
                 dialog();
+                mainConfig.moveFinishedEvent.dom = function () {
+                    mainObject.dom.play('dom-talk');
+                }
             }, null, this);
+        }
+        else if(index === 4){
+            mainObject.dom.play('dom-stand');
+        }
+        else if(index === 5){
+            mainObject.dom.play('dom-talk');
+        }
+        else if(index === 8){
+            mainObject.dom.play('dom-stand');
+        }
+        else if(index === 9){
+            mainObject.dom.play('dom-talk');
         }
         else if(index === 11){
             setTimeout(function () {
@@ -3109,19 +3200,28 @@ function eventByIndex(){
                         ui.dialogGroup.setVisible(true);
                     }
                     dialog();
+                    mainObject.dom.play('dom-talk');
                 }, null, this);
             }, 2000);
         }
         else if(index === 14){
+            mainConfig.clear[4] = true;
             donateSeed();
             writeUserData();
             let light = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0).setAlpha(0);
             ui.group.add(light);
+            mainObject.dom.play('dom-power0');
+            mainObject.dom.setOrigin(0.4, 1);
             scene.tweens.add({
                 targets: light,
                 alpha: 1,
-                duration: 4000,
+                duration: 8000,
                 else: Phaser.Math.Easing.Quintic.In,
+                onUpdate : function (value) {
+                    let percent = Math.round(value.getValue() * 100);
+                    if(percent === 30) mainObject.dom.play('dom-power1');
+                    else if(percent === 60) mainObject.dom.play('dom-power2');
+                },
                 onComplete: function () {
                     let endlight = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0).setAlpha(1);
                     ui.endingGroup.add(endlight);
@@ -3129,8 +3229,8 @@ function eventByIndex(){
                     scene.tweens.add({
                         targets: endlight,
                         alpha: 0,
-                        duration: 3000,
-                        else: Phaser.Math.Easing.Quintic.In,
+                        duration: 4000,
+                        else: Phaser.Math.Easing.Quintic.Out,
                         onComplete: function () {
                             status.scene = 'ending';
                             ui.skip.setVisible(true);
@@ -3235,10 +3335,30 @@ function moveFinished(character) {
 }
 function setBackground(idx) {
     if(idx === 5) {
-        if(mainConfig.seedNum <= 10) mainConfig.gameResult = 2;
-        else if(10 < mainConfig.seedNum && mainConfig.seedNum < 20) mainConfig.gameResult = 1;
-        else if(mainConfig.seedNum > 20) mainConfig.gameResult = 0;
+        // TODO 결과 배경
+        if(mainConfig.seedNum <= 15) mainConfig.gameResult = 2;
+        else if(15 < mainConfig.seedNum && mainConfig.seedNum < 40) mainConfig.gameResult = 1;
+        else if(mainConfig.seedNum > 40) mainConfig.gameResult = 0;
         ui.bg.play('bg5-' + mainConfig.gameResult);
+        if(mainConfig.gameResult === 0){
+            let scene = game.scene.scenes[0];
+            object.treeObj = [];
+            object.treeObj[0] = scene.add.sprite(0, 0, 'obj', 'tree-bg0').setOrigin(0).setScale(2);
+            object.treeObj[1] = scene.add.sprite(display.width, 0, 'obj', 'tree-bg1').setOrigin(1, 0).setScale(2);
+            object.treeGroup.add(object.treeObj);
+        }
+        else if(mainConfig.gameResult === 1) {
+            let scene = game.scene.scenes[0];
+            object.treeObj = [];
+            object.treeObj[0] = scene.add.sprite(0, 298, 'obj', 'tree-obj0').setOrigin(0, 1).setScale(2);
+            object.treeObj[1] = scene.add.sprite(126 * 2, 79 * 2 + 58, 'obj', 'tree-obj0').setOrigin(0, 1).setScale(2);
+            object.treeObj[2] = scene.add.sprite(29 * 2, 46 * 2 + 58, 'obj', 'tree-obj0').setOrigin(0, 1).setScale(2);
+            object.treeObj[3] = scene.add.sprite(119 * 2, 78, 'obj', 'tree-obj0').setOrigin(0, 1).setScale(2);
+
+            object.treeObj[4] = scene.add.sprite(90, 74, 'obj', 'tree-obj1').setOrigin(0, 1).setScale(2);
+            object.treeObj[5] = scene.add.sprite(232, 142, 'obj', 'tree-obj1').setOrigin(0, 1).setScale(2);
+            mainObject.group.add(object.treeObj);
+        }
     }
     else {
         ui.bg.play('bg' + idx);
@@ -3282,7 +3402,6 @@ function chapterTitle(skip) {
         status.scene = 'chapter';
         status.index = 0;
         status.taskIdx = 0;
-        console.log(status.scene, status.chapterIdx);
         game.scene.scenes[0].tweens.add({
             targets: ui.dark,
             alpha: 0,
@@ -3389,7 +3508,7 @@ function chapterTitle(skip) {
             maps.navMesh.destroy();
             setVisibleObjects(false, mainObject.sheeps);
             setVisibleObjects(false, [ui.skip, ui.bridge, mainObject.man]);
-            setVisibleObjects(true, [mainObject.fishman]);
+            setVisibleObjects(true, [mainObject.fishman, object.list[5], object.list[6]]);
             maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[3], 12.5);
             mainObject.player.x = display.width + 40;
             mainObject.dom.x = display.width + 120;
@@ -3411,8 +3530,8 @@ function chapterTitle(skip) {
         }
         else if(chapterIdx === 4){
             maps.navMesh.destroy();
-            setVisibleObjects(false, [ui.skip, mainObject.fishman]);
-            setVisibleObjects(true, [mainObject.gambler, object.list[5], object.list[6]]);
+            setVisibleObjects(false, [ui.skip, mainObject.fishman, object.list[5], object.list[6]]);
+            setVisibleObjects(true, [mainObject.gambler, object.list[7], object.list[8]]);
             ui.fishingGroup.destroy();
             ui.fishingCastGroup.destroy();
             mainObject.fishman.destroy();
@@ -3450,29 +3569,29 @@ function chapterTitle(skip) {
             mainObject.titlezone.height = 200;
             setResult(mainConfig.gameResult);
             function setResult(seed) {
-                object.list[7].setTexture('obj', 'tree-bottom' + seed).setScale(2).setOrigin(0, 1);
+                object.list[9].setTexture('obj', 'tree-bottom' + seed).setScale(2).setOrigin(0, 1);
                 object.tree.setTexture('obj', 'tree-top' + seed).setScale(2).setOrigin(0);
                 object.treeshade.setTexture('obj', 'tree-shade' + seed).setScale(2).setOrigin(0);
                 if(seed === 0){
-                    object.list[7].setPosition(158, 402);
+                    object.list[9].setPosition(158, 402);
                     object.tree.setPosition(82, 150);
                     object.treeshade.setPosition(88, 366);
                 }
                 else if(seed === 1) {
-                    object.list[7].setPosition(158, 400);
+                    object.list[9].setPosition(158, 400);
                     object.tree.setPosition(122, 232);
                     object.treeshade.setPosition(120, 364);
                 }
                 else if(seed === 2){
-                    object.list[7].setPosition(168, 386);
+                    object.list[9].setPosition(168, 386);
                     object.tree.setPosition(132, 282);
                     object.treeshade.setPosition(150, 370);
                 }
             }
 
             maps.navMesh.destroy();
-            setVisibleObjects(false, [ui.skip, mainObject.gambler, object.list[5], object.list[6]]);
-            setVisibleObjects(true, [object.tree, object.treeshade, object.list[7]]);
+            setVisibleObjects(false, [ui.skip, mainObject.gambler, object.list[7], object.list[8]]);
+            setVisibleObjects(true, [object.tree, object.treeshade, object.list[9]]);
             mainObject.gambler.destroy();
             ui.gamblePos.destroy();
             maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[5], 12.5);
@@ -3585,7 +3704,6 @@ signInAnonymously(auth).catch((error) => {
 onAuthStateChanged(auth, (user) => {
     if (user) {
         serverData.uid = user.uid;
-        console.log(user.uid);
         toggleCounter();
     } else {
     }
@@ -3627,6 +3745,7 @@ function readData(level) {
     if(mainConfig.signalReadCount > 20){
         // 20번 시도에도 없으면 리턴
         mainConfig.signalReadCount = 0;
+        ui.signalBtn.setInteractive();
         return;
     }
     let r = 0;

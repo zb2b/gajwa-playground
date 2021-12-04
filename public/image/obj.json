@@ -209,5 +209,65 @@
         "sourceSize": { "w" :28, "h" :14 },
         "pivot":  { "x": 0, "y" :1 }
   }
+  ,
+  {
+        "filename": "fishing-0",
+        "frame":  { "x": 0, "y" :231, "w" :12, "h" :9 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :12, "h" :9 },
+        "sourceSize": { "w" :12, "h" :9 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "fishing-1",
+        "frame":  { "x": 15, "y" :232, "w" :47, "h" :32 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :47, "h" :32 },
+        "sourceSize": { "w" :47, "h" :32 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "tree-bg0",
+        "frame":  { "x": 275, "y" :132, "w" :69, "h" :133 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :69, "h" :133 },
+        "sourceSize": { "w" :69, "h" :133 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "tree-bg1",
+        "frame":  { "x": 209, "y" :191, "w" :66, "h" :117 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :66, "h" :117 },
+        "sourceSize": { "w" :66, "h" :117 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "tree-obj0",
+        "frame":  { "x": 279, "y" :273, "w" :35, "h" :29 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :35, "h" :29 },
+        "sourceSize": { "w" :35, "h" :29 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
+  ,
+  {
+        "filename": "tree-obj1",
+        "frame":  { "x": 314, "y" :273, "w" :22, "h" :21 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :22, "h" :21 },
+        "sourceSize": { "w" :22, "h" :21 },
+        "pivot":  { "x": 0, "y" :1 }
+  }
   ]
 }

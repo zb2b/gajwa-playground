@@ -251,12 +251,12 @@
   }
   ,
   {
-        "filename": "fish",
-        "frame":  { "x": 80, "y" :32, "w" :32, "h" :16 },
+        "filename": "fish0",
+        "frame":  { "x": 80, "y" :32, "w" :16, "h" :16 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
-        "sourceSize": { "w" :32, "h" :16 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
+        "sourceSize": { "w" :16, "h" :16 },
         "pivot":  { "x": 0.5, "y" :1 }
   }
   ,
@@ -482,41 +482,51 @@
   ,
   {
         "filename": "fish2",
-        "frame":  { "x": 112, "y" :32, "w" :8, "h" :16 },
+        "frame":  { "x": 96, "y" :32, "w" :16, "h" :16 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :8, "h" :16 },
-        "sourceSize": { "w" :8, "h" :16 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
+        "sourceSize": { "w" :16, "h" :16 },
         "pivot":  { "x": 0.5, "y" :1 }
   }
   ,
   {
         "filename": "fish3",
-        "frame":  { "x": 121, "y" :32, "w" :12, "h" :16 },
+        "frame":  { "x": 112, "y" :32, "w" :16, "h" :16 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :12, "h" :16 },
-        "sourceSize": { "w" :12, "h" :16 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
+        "sourceSize": { "w" :16, "h" :16 },
         "pivot":  { "x": 0.5, "y" :1 }
   }
   ,
   {
         "filename": "fish4",
-        "frame":  { "x": 134, "y" :32, "w" :15, "h" :16 },
+        "frame":  { "x": 128, "y" :32, "w" :16, "h" :16 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :15, "h" :16 },
-        "sourceSize": { "w" :15, "h" :16 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
+        "sourceSize": { "w" :16, "h" :16 },
         "pivot":  { "x": 0.5, "y" :1 }
   }
   ,
   {
         "filename": "fish5",
-        "frame":  { "x": 149, "y" :32, "w" :21, "h" :16 },
+        "frame":  { "x": 112, "y" :16, "w" :32, "h" :16 },
         "rotated": false,
         "trimmed": true,
-        "spriteSourceSize":  { "x": 0, "y" :0, "w" :21, "h" :16 },
-        "sourceSize": { "w" :21, "h" :16 },
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :32, "h" :16 },
+        "sourceSize": { "w" :32, "h" :16 },
+        "pivot":  { "x": 0.5, "y" :1 }
+  }
+  ,
+  {
+        "filename": "fish1",
+        "frame":  { "x": 96, "y" :16, "w" :16, "h" :16 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :16, "h" :16 },
+        "sourceSize": { "w" :16, "h" :16 },
         "pivot":  { "x": 0.5, "y" :1 }
   }
   ]
