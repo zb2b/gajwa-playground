@@ -169,6 +169,7 @@ function preload() {
     this.load.spritesheet('doors', 'image/doors.png', { frameWidth: 35, frameHeight: 48, endFrame: 16 });
     this.load.atlas('keyboard', 'image/keyboard.png', 'image/keyboard.json');
     this.load.atlas('ui', 'image/ui.png', 'image/ui.json');
+    this.load.atlas('ending', 'image/ending.png', 'image/ending.json');
     // plugins
     this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
     // particle
@@ -180,10 +181,6 @@ function create() {
     mainObject.bgm = this.sound.add('bgm');
     mainObject.bgm.loop = true;
     mainObject.bgm.play();
-    const resetConfig = {};
-    Object.keys(mainConfig).forEach(function (v) {
-        resetConfig[v] = mainConfig[v];
-    });
 
     status.chapterIdx = mainConfig.debugModeChapter;
     setLines(this);
@@ -251,18 +248,6 @@ function create() {
         if(path.get('player').length < 1) return;
         moveCharacter('player');
     });
-    this.input.keyboard.addKey('R').on('down', function(event) {
-        console.log('Reset');
-        resetGame(resetConfig);
-    })
-    this.input.keyboard.addKey('Z').on('down', function(event) {
-        if(mainConfig.endingIdx > 0) mainConfig.endingIdx--;
-        endingMotion();
-    })
-    this.input.keyboard.addKey('X').on('down', function(event) {
-        if(mainConfig.endingIdx < 5) mainConfig.endingIdx++;
-        endingMotion();
-    })
 }
 function endingMotion() {
     game.scene.scenes[0].tweens.add({
@@ -271,19 +256,54 @@ function endingMotion() {
         duration: 800,
         ease: Phaser.Math.Easing.Quintic.Out
     });
+    // 엔딩 버튼 위치
+    if(mainConfig.endingIdx === 0){
+        ui.endingSkip.setVisible(false);
+    }
+    if(mainConfig.endingIdx === 1){
+        ui.endingSkip.setVisible(true);
+    }
+    if(mainConfig.endingIdx === 5) {
+        ui.skip.setVisible(true);
+        for (let i = 0; i < 4; i++) {
+            game.scene.scenes[0].tweens.add({
+                targets: ui.endingBtns[i],
+                x: display.width,
+                duration: 800 + (i * 100),
+                ease: Phaser.Math.Easing.Quintic.Out
+            });
+        }
+    }
+    else if(mainConfig.endingIdx === 6) {
+        ui.skip.setVisible(false);
+        for (let i = 0; i < 4; i++) {
+            game.scene.scenes[0].tweens.add({
+                targets: ui.endingBtns[i],
+                x: 0,
+                duration: 800 + (i * 100),
+                ease: Phaser.Math.Easing.Quintic.Out
+            });
+        }
+    }
+    // 엔딩 로그 위치
     if(!mainConfig.endinglogTween[mainConfig.endingIdx]){
         if(mainConfig.endingIdx === 0) return;
-        mainConfig.endinglogTween[mainConfig.endingIdx] =
+        let idx = mainConfig.endingIdx;
+        if(mainConfig.endingIdx === 6) {
+            idx = 5;
+            return;
+        }
+        mainConfig.endinglogTween[idx] =
             game.scene.scenes[0].tweens.addCounter({
                 from: 0,
-                to: mainConfig.endingData[mainConfig.endingIdx],
+                to: mainConfig.endingData[idx],
                 ease: Phaser.Math.Easing.Quartic.Out,
                 duration: 1600,
                 repeat: 0,
                 onUpdate: function (tween)
                 {
                     let value = Math.round(tween.getValue());
-                    ui.logText[mainConfig.endingIdx].text = value;
+                    ui.logText[idx].text = value;
                 }
             });
     }
@@ -300,6 +320,10 @@ function resetGame(resetConfig) {
     status.index =0;
     status.chapterIdx =0;
     status.taskIdx =0;
+    signInAnonymously(auth).catch((error) => {
+        console.log(error.code);
+        console.log(error.message);
+    });
 }
 function update() {
     // TODO 업데이트 프레임
@@ -1140,6 +1164,7 @@ function createUIObjects(scene) {
 
     let bg = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0);
     ui.endingBtns = [];
+    ui.endingBtnsBox = [];
     const BtnText = [
         {text: '> 처음으로 돌아가기', size: 180},
         {text: '> 미래에 숲이 된 공원 보러가기', size: 260},
@@ -1147,14 +1172,32 @@ function createUIObjects(scene) {
         {text: '> 미지의 세계로', size: 148},
     ]
     for (let i = 0; i < 4; i++) {
-        let txt = scene.add.text(display.centerW, display.centerH + (i * 60), BtnText[i].text, endingFont)
+        let txt = scene.add.text(display.centerW, display.centerH + (i * 60) - 80, BtnText[i].text, endingFont)
             .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
-        let box = scene.add.rectangle(txt.x, txt.y + 20, BtnText[i].size, 54, 0x00ff00).setOrigin(0.5, 1);
-        ui.endingBtns[i] = scene.add.container().add([box, txt]);
+        ui.endingBtnsBox[i] = scene.add.rectangle(txt.x, txt.y + 20, BtnText[i].size, 54, 0x00ff00).setOrigin(0.5, 1).setInteractive();
+        ui.endingBtns[i] = scene.add.container().add([ui.endingBtnsBox[i], txt]);
+        ui.endingBtns[i].x = display.width;
     }
+    ui.endingBtnsBox[0].on('pointerup', function () {
+        const resetConfig = {};
+        Object.keys(mainConfig).forEach(function (v) {
+            resetConfig[v] = mainConfig[v];
+        });
+        resetGame(resetConfig);
+    })
+    ui.endingBtnsBox[1].on('pointerup', function () {
+        window.open('http://naver.me/FXHVvKBe')
+    })
+    ui.endingBtnsBox[2].on('pointerup', function () {
+        window.open('https://www.play-gajwa.com/')
+    })
+    ui.endingBtnsBox[3].on('pointerup', function () {
+        window.open('https://www.instagram.com/myzy.space/');
+    })
 
     ui.logList = [];
     ui.logText = [];
+    ui.endingImage = [];
     const loginfo = [
         {text: '당신이 컴퓨터를 정지한 방법', size: 260},
         {text: '당신이 구한 한 양의 수', size: 200},
@@ -1168,29 +1211,24 @@ function createUIObjects(scene) {
         let txt = scene.add.text(0, 220, loginfo[i].text, endingFont)
             .setAlign('left').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
         let box = scene.add.rectangle(txt.x, txt.y + 10, loginfo[i].size, 36, 0x00ff00).setOrigin(0.5, 1);
-        ui.logText[i] = scene.add.text(0, 40, '0', endingCount)
+        ui.logText[i] = scene.add.text(0, 110, '0', endingCount)
             .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(80);
-        ui.logList[i].add([box, txt, ui.logText[i]]);
+        ui.endingImage[i] = scene.add.sprite(0, -30, 'ending', i.toString()).setScale(2);
+
+        ui.logList[i].add([ui.endingImage[i], box, txt, ui.logText[i]]);
     }
+    ui.endingImage[5].play('total').setScale(2);
+    ui.logText[0].setFontSize(32).setPosition(0, 80);
     let num = ['', '마리', '마리', '번', '개', '개'];
-    ui.theend = scene.add.text(display.centerW, display.centerH + 32, 'THE END', endingCount)
+    ui.theend = scene.add.text(display.centerW, display.centerH + 16, 'THE END', endingCount)
         .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(32);
 
     ui.endingLog = scene.add.container().add(ui.logList).setPosition(display.width, 0);
-
-
-    ui.endingchar = [];
-    ui.endingchar[0] = scene.add.sprite(display.centerW, 120).play('dom-stand').setScale(2).setOrigin(0.5);
-    ui.endingchar[1] = scene.add.sprite(display.centerW + 40, 100).play('fishman-stand').setFlipX(true).setScale(2).setOrigin(0.5);
-    ui.endingchar[2] = scene.add.sprite(display.centerW - 40, 100).play('gambler-stand').setScale(2).setOrigin(0.5);
-    ui.endingchar[3] = scene.add.sprite(display.centerW - 60, 140).play('man-stand').setScale(2).setOrigin(0.5);
-    ui.endingchar[4] = scene.add.sprite(display.centerW + 60, 140).play('engineer-stand').setFlipX(true).setScale(2).setOrigin(0.5);
-
     ui.endingFrame = scene.add.sprite(0, 0, 'frame').setScale(2).setOrigin(0);
 
     ui.endingGroup.add(bg);
     ui.endingGroup.add(ui.endingLog);
-    ui.endingGroup.add(ui.endingchar);
+    ui.endingGroup.add(ui.endingBtns);
     ui.endingGroup.add(ui.theend);
     ui.endingGroup.add(ui.endingFrame);
 
@@ -1370,6 +1408,15 @@ function setAnimations(scene) {
         frames: scene.anims.generateFrameNumbers('title', { start: 0, end: 1 }),
         frameRate: 1,
         repeat: -1
+    });
+    scene.anims.create({
+        key: 'total',
+        repeat: -1,
+        frameRate: 2,
+        frames: scene.anims.generateFrameNames('ending', {
+            prefix: 'total',
+            end: 1
+        })
     });
     scene.anims.create({
         key: 'signal',
@@ -2263,7 +2310,6 @@ function selectBridge(index, bridge) {
             mainConfig.sheepRecordOn = false;
             savedData.trace.sheep = {sheep: mainObject.sheeps.length, path: mainConfig.sheepRecord};
             writeUserData();
-            console.log(savedData.trace)
             let left = 0;
             f();
             function f() {
@@ -2362,8 +2408,11 @@ function sheepFinish() {
 }
 function checkSignal(arr) {
     // TODO 시그널
+    if(!arr) {
+        ui.signalBtn.setInteractive();
+        return;
+    }
     let count = 0;
-    console.log('check')
     blink();
     function blink() {
         let sign =  ui.signal.get();
@@ -2461,7 +2510,7 @@ function skip() {
             });
             return;
         }
-        if(mainConfig.endingIdx < ui.logText.length - 1) mainConfig.endingIdx++;
+        if(mainConfig.endingIdx < ui.logText.length) mainConfig.endingIdx++;
         endingMotion();
         if(mainConfig.endingIdx === 1){
             ui.endingSkip.setVisible(true);
@@ -3226,31 +3275,19 @@ function eventByIndex(){
                     let endlight = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0).setAlpha(1);
                     ui.endingGroup.add(endlight);
                     ui.endingGroup.setVisible(true);
+                    ui.skip.setVisible(true);
+                    status.scene = 'ending';
                     scene.tweens.add({
                         targets: endlight,
                         alpha: 0,
                         duration: 4000,
                         else: Phaser.Math.Easing.Quintic.Out,
                         onComplete: function () {
-                            status.scene = 'ending';
-                            ui.skip.setVisible(true);
+
                         }
                     });
                 }
             });
-            function zoom() {
-                ui.skip.disableInteractive();
-                ui.cam.zoom = 1;
-                setTimeout(function () {
-                    ui.cam.pan(display.centerW, mainObject.player.y, 6000, Phaser.Math.Easing.Quintic.In, true);
-                    ui.cam.zoomTo(4, 6000, Phaser.Math.Easing.Quintic.In);
-                    ui.cam.on(Phaser.Cameras.Scene2D.Events.ZOOM_COMPLETE, () => {
-                        ui.dialogGroup.setVisible(true);
-                        dialog();
-                        ui.skip.setInteractive();
-                    });
-                }, 400);
-            }
         }
     }
 }
@@ -3634,7 +3671,14 @@ function setEndingData(total) {
     mainConfig.endingData[4] = savedData.totalseed;
     mainConfig.endingData[5] = total;
 
-    ui.logText[0].text = mainConfig.endingData[0];
+    const way = {
+        '0000': '초기화 암호\n[0000]을 입력함',
+        '1234': '비밀번호\n[1234]를 입력함',
+        'power': '전원 버튼을\n눌러서 종료함',
+        'break': '컴퓨터를 박살냄',
+        'danger': '비상 버튼을\n누르고 실행함'
+    }
+    ui.logText[0].text = way[mainConfig.endingData[0]];
 }
 
 // TODO 통신 제어
@@ -3693,9 +3737,9 @@ import { getAnalytics } from "firebase/analytics";
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 
-import { getDatabase, ref, set, get, child, runTransaction, onValue, query, orderByChild, orderByKey, limitToLast, equalTo } from "firebase/database";
+import { getDatabase, ref, set, get, child, runTransaction, onValue, query, orderByChild, orderByKey, equalTo } from "firebase/database";
 
-import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "firebase/auth";
 const auth = getAuth();
 signInAnonymously(auth).catch((error) => {
         console.log(error.code);
@@ -3738,6 +3782,12 @@ function readTotalSeed() {
         if (snapshot.exists()) {
             setEndingData(snapshot.val());
         }
+    }).then(() => {
+        // 로그아웃
+        const auth = getAuth();
+        signOut(auth).then(() => {
+        }).catch((error) => {
+        });
     });
 }
 function readData(level) {
@@ -3764,18 +3814,18 @@ function readData(level) {
                         const key = data.key;
                         const value = data.val();
                         if(value.trace){
-                            if(value.trace[level]) serverData[level] = value.trace[level];
+                            if(value.trace[level]){
+                                if(value.trace[level].path) {
+                                    serverData[level] = value.trace[level];
+                                }
+                            }
                         }
                     })
                 }
-            }).then(() => {
-                if(serverData[level]) {
-                    checkSignal(serverData[level].path);
-                }
-                else {
-                    readData(level);
-                }
-            })
+            }).then(() =>{
+                if(serverData[level] === null) readData(level);
+                else checkSignal(serverData[level].path);
+            });
         });
     }
     else if(level === 'gambler'){
