@@ -2120,7 +2120,8 @@ function setGameScenes() {
         ui.gameScene[i].setVisible(false);
     }
     ui.gameGroup.y = 840;
-    ui.gameScene[(status.chapterIdx === 0) ? 0 : status.chapterIdx - 1].setVisible(true);
+    console.log(status.chapterIdx)
+    ui.gameScene[status.chapterIdx - 1].setVisible(true);
 }
 function fishingFinish(success) {
     // 낚시 완료
