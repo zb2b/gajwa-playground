@@ -2120,7 +2120,6 @@ function setGameScenes() {
         ui.gameScene[i].setVisible(false);
     }
     ui.gameGroup.y = 840;
-    console.log(status.chapterIdx)
     ui.gameScene[status.chapterIdx - 1].setVisible(true);
 }
 function fishingFinish(success) {
@@ -3876,6 +3875,7 @@ function checkLevel() {
             snapshot.forEach(data => {
                 let clear = data.val().clearIdx;
                 status.chapterIdx = clear + 1;
+                if(!data.val().clearIdx) status.chapterIdx = 0;
                 if(status.chapterIdx > 0){
                     mainConfig.askLevel = true;
                 }
