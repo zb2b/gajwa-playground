@@ -3530,7 +3530,7 @@ function chapterStart(chapterIdx) {
     setVisibleObjects(false, [mainObject.particles, mainObject.engineer, mainObject.man, mainObject.fishman, mainObject.gambler, ui.smoke, ui.bridge]);
     setVisibleObjects(false, object.list);
     setVisibleObjects(false, mainObject.sheeps);
-
+    writeUserData();
     if(chapterIdx === 0){
         setVisibleObjects(true, [ui.skip, mainObject.particles, object.list[0], object.list[1], object.list[2], ui.smoke]);
         maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[0], 12.5);
@@ -3875,7 +3875,7 @@ function checkLevel() {
             snapshot.forEach(data => {
                 let clear = data.val().clearIdx;
                 status.chapterIdx = clear + 1;
-                if(!data.val().clearIdx) status.chapterIdx = 0;
+                if(data.val().clearIdx === undefined) status.chapterIdx = 0;
                 if(status.chapterIdx > 0){
                     mainConfig.askLevel = true;
                 }
