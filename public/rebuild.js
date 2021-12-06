@@ -50,6 +50,8 @@ const moveTargets = {
 const mainConfig = {
     debugMode : false,
     debugModeChapter: 0,
+    askLevel: false,
+    askLevelDone: false,
 
     playerMovable : false,
     domFollow: false,
@@ -73,7 +75,7 @@ const mainConfig = {
     sheepRecordOn: false,
     sheepRecord: [],
 
-    clear : [false, false, false, false, false],
+    clear : [false, false, false, false, false, false],
     reward: [0, 0, 0, 0, 0],
     livingSheep: 0,
     sheepJump: null,
@@ -125,7 +127,7 @@ const mainConfig = {
 
     theend: false,
     detectCount: 0,
-    forestSeed: 5,
+    forestSeed: 6,
     gameResult: 0,
     endingIdx: 0,
     endingData: [],
@@ -188,6 +190,7 @@ function create() {
     createGraphics(this);
     createCharacters(this);
     createUIObjects(this);
+    setAskLevel(this);
     createSignal(this);
     createObjects(this);
     createParticles(this);
@@ -352,6 +355,10 @@ function update() {
         // 플레이어와 멀때 따라가기 경로
         if(dis.each > 80 && mainConfig.domFollow){
             moveToPoint('dom', mainObject.player.x, mainObject.player.y, true);
+            if(mainObject.player.x > display.width || mainObject.player.x < 0){
+                mainObject.player.setPosition(mainObject.dom.x, mainObject.dom.y - 20);
+                mainObject.player.body.reset(mainObject.player.x, mainObject.player.y);
+            }
         }
     }
     if (mainObject.dom.body.speed > 0){
@@ -483,7 +490,7 @@ function update() {
     mainObject.group.list.sort(function(a, b) {
         return a.y > b.y ? 1 : -1;
     });
-    if(mainConfig.pcTimerPushed && !mainConfig.clear[0]) mainConfig.pcTimer++;
+    if(mainConfig.pcTimerPushed && !mainConfig.clear[1]) mainConfig.pcTimer++;
     if(mainConfig.pcTimer > 140) {
         mainConfig.pcTimerPushed = false;
         mainConfig.pcTimer = 0;
@@ -575,8 +582,7 @@ function createUIObjects(scene) {
 
     ui.smoke = scene.add.sprite(200, 100).play('smoke').setScale(2).setVisible(false);
 
-    ui.skip = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0)
-        .setInteractive();
+    ui.skip = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x00ff00, 0).setInteractive();
     ui.endingSkip = scene.add.rectangle(0, 0, display.centerW, display.height, 0x00ff00, 0).setVisible(false).setOrigin(0).setInteractive();
     ui.endingSkip.on('pointerup', pointer => {
         if(mainConfig.endingIdx > 0) mainConfig.endingIdx--;
@@ -768,9 +774,9 @@ function createUIObjects(scene) {
                             ui.skip.setVisible(true);
                             ui.dialogGroup.setVisible(true);
 
-                            if(!mainConfig.clear[2]){
+                            if(!mainConfig.clear[3]){
                                 // 최초 완료시
-                                mainConfig.clear[2] = true;
+                                mainConfig.clear[3] = true;
                                 mainConfig.reward[2] = 2;
                                 ui.fishingPlayer.setInteractive();
                             }
@@ -788,7 +794,7 @@ function createUIObjects(scene) {
     });
     let fishingQuit = false;
     ui.fishingPlayer.on('pointerup', function () {
-        if(!mainConfig.clear[2] || fishingQuit || mainConfig.fishingNow || mainConfig.fishCasting !== null || mainConfig.floatOnAir) return;
+        if(!mainConfig.clear[3] || fishingQuit || mainConfig.fishingNow || mainConfig.fishCasting !== null || mainConfig.floatOnAir) return;
         let f = (ui.fishingPlayer.anims.currentAnim.key === 'fishing-wait' || ui.fishingPlayer.anims.currentAnim.key === 'fishing-catch');
         if(!f) return;
         fishingQuit = true;
@@ -895,7 +901,6 @@ function createUIObjects(scene) {
     scene.physics.add.overlap(ui.fishIcon, ui.fishingBar, function () {
         mainConfig.fishIconContact = true;
     }, null, this);
-
 
     ui.fishingBtn.on('pointerdown', function () {
         if(mainConfig.fishingDone) return;
@@ -1146,6 +1151,7 @@ function createUIObjects(scene) {
         else {
             ui.signalBtn.disableInteractive();
             const level = {1: 'engineer', 2: 'sheep', 4: 'gambler' };
+            mainConfig.signalReadCount = 0;
             readData(level[status.chapterIdx]);
             mainConfig.detectCount++;
             savedData.detectCount = mainConfig.detectCount;
@@ -1213,11 +1219,12 @@ function createUIObjects(scene) {
         let box = scene.add.rectangle(txt.x, txt.y + 10, loginfo[i].size, 36, 0x00ff00).setOrigin(0.5, 1);
         ui.logText[i] = scene.add.text(0, 110, '0', endingCount)
             .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(80);
-        ui.endingImage[i] = scene.add.sprite(0, -30, 'ending', i.toString()).setScale(2);
+        ui.endingImage[i] = scene.add.sprite(0, -120, 'ending', i.toString()).setScale(2);
 
         ui.logList[i].add([ui.endingImage[i], box, txt, ui.logText[i]]);
     }
-    ui.endingImage[5].play('total').setScale(2);
+    ui.endingImage[0].setPosition(0, -100);
+    ui.endingImage[5].play('total').setScale(2).setPosition(0, -160);
     ui.logText[0].setFontSize(32).setPosition(0, 80);
     let num = ['', '마리', '마리', '번', '개', '개'];
     ui.theend = scene.add.text(display.centerW, display.centerH + 16, 'THE END', endingCount)
@@ -1293,6 +1300,61 @@ function createUIObjects(scene) {
     ui.skip.on('pointerup', function () {
         skip();
     });
+}
+function setAskLevel(scene) {
+    ui.levelBox = scene.add.rexNinePatch({
+        x: display.centerW, y: display.centerH,
+        width: (display.width - 40) * 0.5, height: 180 * 0.5,
+        key: 'ui',
+        baseFrame: 'default',
+        columns: [8, undefined, 8],
+        rows: [8, undefined, 8],
+    }).setOrigin(0.5).setScale(2);
+    ui.leveltxt = scene.add.text(display.centerW, display.centerH - 52, '저장된 진행단계가 있습니다.\n이어서 계속하시겠습니까?', fontConfig).setAlign('center').setOrigin(0.5, 0).setFontSize(16).setLineSpacing(4);
+    ui.levelBtn = [];
+    ui.levelBtnTxt = [];
+    ui.levelBtnTxt[0] = scene.add.text(display.centerW - 64, display.centerH + 36, '처음부터', fontConfig).setOrigin(0.5).setFontSize(16).setLineSpacing(4);
+    ui.levelBtnTxt[1] = scene.add.text(display.centerW + 64, display.centerH + 36, '이어하기', fontConfig).setOrigin(0.5).setFontSize(16).setLineSpacing(4);
+    ui.levelBtn[0] = scene.add.rexNinePatch({
+        x: display.centerW - 64, y: display.centerH + 36,
+        width: 60, height: 28,
+        key: 'ui',
+        baseFrame: 'btn',
+        columns: [4, undefined, 4],
+        rows: [4, undefined, 4],
+    }).setOrigin(0.5).setScale(2).setInteractive();
+    ui.levelBtn[1] = scene.add.rexNinePatch({
+        x: display.centerW + 64, y: display.centerH + 36,
+        width: 60, height: 28,
+        key: 'ui',
+        baseFrame: 'btn',
+        columns: [4, undefined, 4],
+        rows: [4, undefined, 4],
+    }).setOrigin(0.5).setScale(2).setInteractive();
+    ui.levelBtn[0].on('pointerup', function () {
+       status.chapterIdx = 0;
+        ui.levelBtn[0].setTint('0xffffff');
+       ui.skip.setVisible(true);
+       ui.levelGroup.setVisible(false);
+       shakeObject(ui.largeText, 20, 20, 240);
+    }).on('pointerdown', function () {
+        ui.levelBtn[0].setTint('0x00ff00');
+    }).on('pointerout', function () {
+        ui.levelBtn[0].setTint('0xffffff');
+    });
+    ui.levelBtn[1].on('pointerup', function () {
+       ui.skip.setVisible(true);
+        ui.levelBtn[1].setTint('0xffffff');
+        ui.levelGroup.setVisible(false);
+        chapterStart(status.chapterIdx);
+    }).on('pointerdown', function () {
+        ui.levelBtn[1].setTint('0x00ff00');
+    }).on('pointerout', function () {
+        ui.levelBtn[1].setTint('0xffffff');
+    });
+    ui.levelGroup = scene.add.container().add([ui.levelBox, ui.leveltxt]).setVisible(false);
+    ui.levelGroup.add(ui.levelBtn);
+    ui.levelGroup.add(ui.levelBtnTxt);
 }
 function createSignal(scene) {
     // 시그널 효과 생성
@@ -1400,6 +1462,7 @@ function setLayer(scene) {
     mainObject.layer.add(ui.group);
     mainObject.layer.add(ui.effectGroup);
     mainObject.layer.add(ui.endingGroup);
+    mainObject.layer.add(ui.levelGroup);
 }
 function setAnimations(scene) {
     // TODO 애니메이션 추가
@@ -1930,7 +1993,7 @@ function typewriteText(object, txt, speed) {
     }
 }
 function keyboardAction(key) {
-    if(mainConfig.clear[0]) return;
+    if(mainConfig.clear[1]) return;
     if(key < 10){
         if(ui.pcInfo.length === 4) return;
         ui.pcInfo += '' + key;
@@ -2003,7 +2066,7 @@ function pcShutDown(way) {
 
     line.story[1][14] = newline.get(way);
     let scene = game.scene.scenes[0];
-    mainConfig.clear[0] = true;
+    mainConfig.clear[1] = true;
     ui.pcOff.setVisible(true);
     scene.tweens.addCounter({
         from: 255,
@@ -2078,7 +2141,7 @@ function fishingFinish(success) {
     ui.fishIcon.y = display.centerH - 80;
     setVisibleObjects(false, [ui.fishingBar, ui.fishingGroup]);
     if(success){
-        if(!mainConfig.clear[2]) {
+        if(!mainConfig.clear[3]) {
             setTask(false);
         }
         else {
@@ -2163,7 +2226,7 @@ function createFloatWave(target) {
 }
 function createParts(x, y, vx, vy) {
     // pc 부수기
-    if(mainConfig.clear[0]) return;
+    if(mainConfig.clear[1]) return;
     mainConfig.pcCrackCount++;
     if(mainConfig.pcCrackCount === 10) {
         ui.pc.setTexture('minigame', 'pc1');
@@ -2364,7 +2427,7 @@ function sheepFinish() {
         sheepTalk(i, mainObject.sheeps[i]);
     }
     setTask(false);
-    mainConfig.clear[1] = true;
+    mainConfig.clear[2] = true;
     let dead = mainConfig.deadSheep.length;
     const newLine = {13: new Map(), 14: new Map(), 15: new Map(), 16: null, 17: null};
     newLine[13].set(5, "[양치기 소년]\n........");
@@ -2437,6 +2500,10 @@ function checkSignal(arr) {
 // TODO 이벤트 메서드
 function skip() {
     if(status.scene === 'title'){
+        if(!mainConfig.askLevelDone){
+            checkLevel();
+            return;
+        }
         if(mainConfig.debugMode){
             mainObject.TitleEmitter.stop();
             mainObject.TitleEmitter.setVisible(false);
@@ -2444,6 +2511,7 @@ function skip() {
             chapterTitle(mainConfig.debugMode);
             ui.background.setVisible(false);
             ui.dark.setVisible(true);
+            checkLevelUI();
             return;
         }
         status.scene = 'opening';
@@ -2455,6 +2523,7 @@ function skip() {
             duration: 1800,
             ease: Phaser.Math.Easing.Quintic.In,
             onComplete: function () {
+                checkLevelUI();
                 ui.title.setVisible(false);
                 ui.largeText.setVisible(true);
                 ui.largeText.text = line.opening[status.index];
@@ -2485,6 +2554,8 @@ function skip() {
         if(ui.rewardGroup.visible === true){
             setReward(false, null);
             if(status.chapterIdx === 5) {
+                ui.skip.setVisible(false);
+                mainConfig.playerMovable = true;
                 return;
             }
             ui.dialogGroup.setVisible(true);
@@ -3049,7 +3120,7 @@ function eventByIndex(){
         }
         else if(index === 37){
             ui.gambler.play('gambler-stand');
-            mainConfig.clear[3] = true;
+            mainConfig.clear[4] = true;
             setTimeout(function (){
                 scene.tweens.add({
                     targets: ui.gameGroup,
@@ -3105,7 +3176,7 @@ function eventByIndex(){
                         duration: 2000,
                         ease: Phaser.Math.Easing.Quintic.In,
                         onComplete: function () {
-                            if(mainConfig.clear[3]){
+                            if(mainConfig.clear[4]){
                                 status.index = 20;
                                 dialog();
                             }
@@ -3208,11 +3279,11 @@ function eventByIndex(){
                 mainConfig.playerMovable = true;
                 mainConfig.domFollow = false;
             }, 0);
-            let seed = scene.add.rectangle(0,0,16, 16, 0x000000).setVisible(false);
+            let seed = scene.add.rectangle(0,0,24, 24, 0x00ff00).setVisible(false);
             scene.physics.add.existing(seed);
             seedColect();
             function seedColect() {
-                seed.setPosition(display.centerW + getRandomInt(160), display.height + 16 - Math.round(Math.random() * 340));
+                seed.setPosition(display.centerW + getRandomInt(160), display.height + 16 - Math.round(Math.random() * 240));
                 let seedCol = scene.physics.add.overlap(mainObject.player, seed, function () {
                     if(mainConfig.forestSeed > 0){
                         seedCol.active = false;
@@ -3223,7 +3294,6 @@ function eventByIndex(){
                 }, null, this);
             }
             function seedDrop() {
-                status.index = 11;
                 moveToPoint('player', mainObject.player.x, mainObject.player.y, true);
                 let seedNum = Math.ceil(Math.random() * 3);
                 setTimeout(() => ui.skip.setVisible(true), 400);
@@ -3254,7 +3324,7 @@ function eventByIndex(){
             }, 2000);
         }
         else if(index === 14){
-            mainConfig.clear[4] = true;
+            mainConfig.clear[5] = true;
             donateSeed();
             writeUserData();
             let light = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0).setAlpha(0);
@@ -3403,6 +3473,7 @@ function setBackground(idx) {
 }
 // TODO 씬 제어
 function chapterTitle(skip) {
+    ui.skip.setVisible(false);
     ui.background.setVisible(true);
     ui.dark.setVisible(false);
     if(skip) {
@@ -3428,233 +3499,238 @@ function chapterTitle(skip) {
         ease: Phaser.Math.Easing.Elastic.InOut,
         onComplete: () => chapterStart(status.chapterIdx)
     });
-
-    function chapterStart(chapterIdx) {
-        ui.next.setVisible(false);
-        ui.background.setVisible(false);
-        ui.dark.setVisible(true);
-        let scene = game.scene.scenes[0];
-        setGameScenes();
-        mainConfig.titleFadeOut = null;
-        status.scene = 'chapter';
-        status.index = 0;
-        status.taskIdx = 0;
-        game.scene.scenes[0].tweens.add({
-            targets: ui.dark,
-            alpha: 0,
-            duration: 1200,
-            onComplete: () => ui.dark.setVisible(false)
-        });
-        ui.largeText.setVisible(false);
-        setBackground(chapterIdx);
-        if(chapterIdx === 0){
-            setVisibleObjects(true, [object.list[0], object.list[1], object.list[2], ui.smoke]);
-            zoomOut(mainConfig.debugMode);
-            function zoomOut(on) {
-                if(on){
-                    ui.dialogGroup.setVisible(true);
-                    dialog();
-                    ui.skip.setInteractive();
-                }
-                else {
-                    ui.skip.disableInteractive();
-                    ui.cam.zoom = 4;
-                    ui.cam.pan(mainObject.player.x, mainObject.player.y - 32, 1);
-                    setTimeout(function () {
-                        ui.cam.pan(display.centerW, display.centerH, 2800, Phaser.Math.Easing.Quintic.InOut, true);
-                        ui.cam.zoomTo(1, 2800, Phaser.Math.Easing.Quintic.InOut);
-                        ui.cam.on(Phaser.Cameras.Scene2D.Events.ZOOM_COMPLETE, () => {
-                            ui.dialogGroup.setVisible(true);
-                            dialog();
-                            ui.skip.setInteractive();
-                        });
-                    }, 400);
-                }
-            }
-        }
-        else if(chapterIdx === 1){
-            ui.skip.setVisible(false);
-            maps.navMesh.destroy();
-            maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[1], 12.5);
-            setVisibleObjects(false, [object.list[0], object.list[1], object.list[2], ui.smoke]);
-            setVisibleObjects(true, [object.list[3], object.list[4]]);
-            mainObject.particles.setVisible(false);
-            mainObject.engineer.setVisible(true);
-            mainObject.player.x = -16;
-            mainObject.player.y = 200;
-            mainObject.dom.x = -64;
-            mainObject.dom.y = 220;
-
-            moveToPoint('player', display.centerW + 30, 200, false);
-            moveToPoint('dom', display.centerW - 30, 200, false);
-            mainConfig.moveFinishedEvent.player = function () {
-                mainConfig.lookAt.player = mainObject.dom;
-                mainConfig.lookAt.dom = mainObject.player;
-                if(!ui.dialogGroup.visible) {
-                    ui.skip.setVisible(true);
-                    ui.dialogGroup.setVisible(true);
-                }
-                dialog();
-            }
-            mainConfig.moveFinishedEvent.dom = function () {
-                mainObject.dom.play('dom-talk');
-            }
-        }
-        else if(chapterIdx === 2){
-            maps.navMesh.destroy();
-            setVisibleObjects(false, [ui.skip, mainObject.engineer, object.list[3], object.list[4]]);
-            setVisibleObjects(true, [ui.bridge, mainObject.man]);
-            for (let i = 0; i < mainObject.sheeps.length; i++) {
-                mainObject.sheeps[i].setVisible(true);
-            }
-            maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[2], 12.5);
-            mainObject.player.x = mainObject.dom.x = display.centerW - 120;
-            mainObject.player.y = mainObject.dom.y = -80;
-            moveToPoint('player', display.centerW + 30, 136, false);
-            moveToPoint('dom', display.centerW - 30, 136, false);
-            mainConfig.moveFinishedEvent.player = function () {
-                mainConfig.lookAt.player = mainObject.dom;
-                mainConfig.lookAt.dom = mainObject.player;
-                if(!ui.dialogGroup.visible) {
-                    ui.skip.setVisible(true);
-                    ui.dialogGroup.setVisible(true);
-                }
-                dialog();
-            }
-            mainConfig.moveFinishedEvent.dom = function () {
-                mainObject.dom.play('dom-talk');
-            }
-
-            for (let i = 0; i < mainObject.sheeps.length; i++) {
-                let sheep = mainObject.sheeps[i];
-                mainConfig.sheepBlinkTimer[i] = setTimeout(function () {
-                    if(sheep.anims.currentAnim.key === 'sheep-stand') sheep.play('sheep-talk');
-                }, Math.round(Math.random() * 2400));
-            }
-            for (let i = 0; i < mainObject.sheeps.length; i++) {
-                let sheep = mainObject.sheeps[i];
-                sheep.on('animationcomplete', function () {
-                    if(sheep.anims.currentAnim.key === 'sheep-talk') {
-                        sheep.play('sheep-stand');
-                        sheepTalk(i ,sheep);
-                    }
-                });
-            }
-        }
-        else if(chapterIdx === 3){
-            maps.navMesh.destroy();
-            setVisibleObjects(false, mainObject.sheeps);
-            setVisibleObjects(false, [ui.skip, ui.bridge, mainObject.man]);
-            setVisibleObjects(true, [mainObject.fishman, object.list[5], object.list[6]]);
-            maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[3], 12.5);
-            mainObject.player.x = display.width + 40;
-            mainObject.dom.x = display.width + 120;
-            mainObject.player.y = mainObject.dom.y = 80;
-            moveToPoint('player', 240, 100, false);
-            moveToPoint('dom', 280, 100, false);
-            mainConfig.moveFinishedEvent.player = function () {
-                mainConfig.lookAt.player = mainObject.dom;
-                mainConfig.lookAt.dom = mainObject.player;
-                if(!ui.dialogGroup.visible) {
-                    ui.skip.setVisible(true);
-                    ui.dialogGroup.setVisible(true);
-                }
-                dialog();
-            }
-            mainConfig.moveFinishedEvent.dom = function () {
-                mainObject.dom.play('dom-talk');
-            }
-        }
-        else if(chapterIdx === 4){
-            maps.navMesh.destroy();
-            setVisibleObjects(false, [ui.skip, mainObject.fishman, object.list[5], object.list[6]]);
-            setVisibleObjects(true, [mainObject.gambler, object.list[7], object.list[8]]);
-            ui.fishingGroup.destroy();
-            ui.fishingCastGroup.destroy();
-            mainObject.fishman.destroy();
-            maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[4], 12.5);
-            mainObject.player.x = -40;
-            mainObject.dom.x = -120;
-            mainObject.player.y = mainObject.dom.y = 80;
-            moveToPoint('player', 120, 100, false);
-            moveToPoint('dom', 80, 100, false);
-            mainConfig.moveFinishedEvent.player = function () {
-                mainConfig.lookAt.player = mainObject.dom;
-                mainConfig.lookAt.dom = mainObject.player;
-                if(!ui.dialogGroup.visible) {
-                    ui.skip.setVisible(true);
-                    ui.dialogGroup.setVisible(true);
-                }
-                dialog();
-            }
-            mainConfig.moveFinishedEvent.dom = function () {
-                mainObject.dom.play('dom-talk');
-            }
-        }
-        else if(chapterIdx === 5){
-            mainObject.TitleEmitter.setVisible(true);
-            if(mainConfig.debugMode){
-                mainObject.TitleEmitter.start();
-                mainObject.TitleEmitter.setGravityX(20);
-                mainObject.TitleEmitter.setGravityY(40);
-                mainObject.TitleEmitter.setFrequency(200);
-                mainObject.TitleEmitter.setLifespan(12000);
-            }
-
-            mainObject.titlezone.x = -450;
-            mainObject.titlezone.y = -320;
-            mainObject.titlezone.height = 200;
-            setResult(mainConfig.gameResult);
-            function setResult(seed) {
-                object.list[9].setTexture('obj', 'tree-bottom' + seed).setScale(2).setOrigin(0, 1);
-                object.tree.setTexture('obj', 'tree-top' + seed).setScale(2).setOrigin(0);
-                object.treeshade.setTexture('obj', 'tree-shade' + seed).setScale(2).setOrigin(0);
-                if(seed === 0){
-                    object.list[9].setPosition(158, 402);
-                    object.tree.setPosition(82, 150);
-                    object.treeshade.setPosition(88, 366);
-                }
-                else if(seed === 1) {
-                    object.list[9].setPosition(158, 400);
-                    object.tree.setPosition(122, 232);
-                    object.treeshade.setPosition(120, 364);
-                }
-                else if(seed === 2){
-                    object.list[9].setPosition(168, 386);
-                    object.tree.setPosition(132, 282);
-                    object.treeshade.setPosition(150, 370);
-                }
-            }
-
-            maps.navMesh.destroy();
-            setVisibleObjects(false, [ui.skip, mainObject.gambler, object.list[7], object.list[8]]);
-            setVisibleObjects(true, [object.tree, object.treeshade, object.list[9]]);
-            mainObject.gambler.destroy();
-            ui.gamblePos.destroy();
-            maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[5], 12.5);
-            mainObject.player.x = display.centerW + 20;
-            mainObject.dom.x = display.centerW - 20;
-            mainObject.player.y = mainObject.dom.y = -80;
-            moveToPoint('player', display.centerW + 20, 100, false);
-            moveToPoint('dom', display.centerW - 20, 100, false);
-            mainConfig.moveFinishedEvent.player = function () {
-                mainConfig.lookAt.player = mainObject.dom;
-                mainConfig.lookAt.dom = mainObject.player;
-                if(!ui.dialogGroup.visible) {
-                    ui.skip.setVisible(true);
-                    ui.dialogGroup.setVisible(true);
-                }
-                dialog();
-            }
-            mainConfig.moveFinishedEvent.dom = function () {
-                mainObject.dom.play('dom-talk');
-            }
-        }
-        for (let i = 0; i < mainConfig.clear.length; i++) {
-            savedData.clear[i] = mainConfig.clear[i];
-        }
-        writeUserData();
+}
+function checkLevelUI(){
+    if(mainConfig.askLevel){
+        ui.levelGroup.setVisible(true);
+        ui.skip.setVisible(false);
     }
+}
+function chapterStart(chapterIdx) {
+
+    savedData.clearIdx = chapterIdx - 1;
+    ui.next.setVisible(false);
+    ui.background.setVisible(false);
+    ui.dark.setVisible(true);
+    let scene = game.scene.scenes[0];
+    setGameScenes();
+    mainConfig.titleFadeOut = null;
+    status.scene = 'chapter';
+    status.index = 0;
+    status.taskIdx = 0;
+    game.scene.scenes[0].tweens.add({
+        targets: ui.dark,
+        alpha: 0,
+        duration: 1200,
+        onComplete: () => ui.dark.setVisible(false)
+    });
+    ui.largeText.setVisible(false);
+    ui.skip.setVisible(false);
+    setBackground(chapterIdx);
+    maps.navMesh.destroy();
+    setVisibleObjects(false, [mainObject.particles, mainObject.engineer, mainObject.man, mainObject.fishman, mainObject.gambler, ui.smoke, ui.bridge]);
+    setVisibleObjects(false, object.list);
+    setVisibleObjects(false, mainObject.sheeps);
+
+    if(chapterIdx === 0){
+        setVisibleObjects(true, [ui.skip, mainObject.particles, object.list[0], object.list[1], object.list[2], ui.smoke]);
+        maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[0], 12.5);
+        zoomOut(mainConfig.debugMode);
+        function zoomOut(on) {
+            if(on){
+                ui.dialogGroup.setVisible(true);
+                dialog();
+                ui.skip.setInteractive();
+            }
+            else {
+                ui.skip.disableInteractive();
+                ui.cam.zoom = 4;
+                ui.cam.pan(mainObject.player.x, mainObject.player.y - 32, 1);
+                setTimeout(function () {
+                    ui.cam.pan(display.centerW, display.centerH, 2800, Phaser.Math.Easing.Quintic.InOut, true);
+                    ui.cam.zoomTo(1, 2800, Phaser.Math.Easing.Quintic.InOut);
+                    ui.cam.on(Phaser.Cameras.Scene2D.Events.ZOOM_COMPLETE, () => {
+                        ui.dialogGroup.setVisible(true);
+                        dialog();
+                        ui.skip.setInteractive();
+                    });
+                }, 400);
+            }
+        }
+    }
+    else if(chapterIdx === 1){
+        mainConfig.clear[0] = true;
+        maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[1], 12.5);
+        setVisibleObjects(true, [mainObject.dom, mainObject.engineer, object.list[3], object.list[4]]);
+        mainObject.player.x = -16;
+        mainObject.player.y = 200;
+        mainObject.dom.x = -64;
+        mainObject.dom.y = 220;
+
+        moveToPoint('player', display.centerW + 30, 200, false);
+        moveToPoint('dom', display.centerW - 30, 200, false);
+        mainConfig.moveFinishedEvent.player = function () {
+            mainConfig.lookAt.player = mainObject.dom;
+            mainConfig.lookAt.dom = mainObject.player;
+            if(!ui.dialogGroup.visible) {
+                ui.skip.setVisible(true);
+                ui.dialogGroup.setVisible(true);
+            }
+            dialog();
+        }
+        mainConfig.moveFinishedEvent.dom = function () {
+            mainObject.dom.play('dom-talk');
+        }
+    }
+    else if(chapterIdx === 2){
+        setVisibleObjects(true, [mainObject.dom, mainObject.man, ui.bridge]);
+        setVisibleObjects(true, mainObject.sheeps);
+        for (let i = 0; i < mainObject.sheeps.length; i++) {
+            mainObject.sheeps[i].setVisible(true);
+        }
+        maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[2], 12.5);
+        mainObject.player.x = mainObject.dom.x = display.centerW - 120;
+        mainObject.player.y = mainObject.dom.y = -80;
+        moveToPoint('player', display.centerW + 30, 136, false);
+        moveToPoint('dom', display.centerW - 30, 136, false);
+        mainConfig.moveFinishedEvent.player = function () {
+            mainConfig.lookAt.player = mainObject.dom;
+            mainConfig.lookAt.dom = mainObject.player;
+            if(!ui.dialogGroup.visible) {
+                ui.skip.setVisible(true);
+                ui.dialogGroup.setVisible(true);
+            }
+            dialog();
+        }
+        mainConfig.moveFinishedEvent.dom = function () {
+            mainObject.dom.play('dom-talk');
+        }
+
+        for (let i = 0; i < mainObject.sheeps.length; i++) {
+            let sheep = mainObject.sheeps[i];
+            mainConfig.sheepBlinkTimer[i] = setTimeout(function () {
+                if(sheep.anims.currentAnim.key === 'sheep-stand') sheep.play('sheep-talk');
+            }, Math.round(Math.random() * 2400));
+        }
+        for (let i = 0; i < mainObject.sheeps.length; i++) {
+            let sheep = mainObject.sheeps[i];
+            sheep.on('animationcomplete', function () {
+                if(sheep.anims.currentAnim.key === 'sheep-talk') {
+                    sheep.play('sheep-stand');
+                    sheepTalk(i ,sheep);
+                }
+            });
+        }
+    }
+    else if(chapterIdx === 3){
+        setVisibleObjects(true, [mainObject.dom, mainObject.fishman, object.list[5], object.list[6]]);
+        maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[3], 12.5);
+        mainObject.player.x = display.width + 40;
+        mainObject.dom.x = display.width + 120;
+        mainObject.player.y = mainObject.dom.y = 80;
+        moveToPoint('player', 240, 100, false);
+        moveToPoint('dom', 280, 100, false);
+        mainConfig.moveFinishedEvent.player = function () {
+            mainConfig.lookAt.player = mainObject.dom;
+            mainConfig.lookAt.dom = mainObject.player;
+            if(!ui.dialogGroup.visible) {
+                ui.skip.setVisible(true);
+                ui.dialogGroup.setVisible(true);
+            }
+            dialog();
+        }
+        mainConfig.moveFinishedEvent.dom = function () {
+            mainObject.dom.play('dom-talk');
+        }
+    }
+    else if(chapterIdx === 4){
+        setVisibleObjects(true, [mainObject.dom, mainObject.gambler, object.list[7], object.list[8]]);
+        ui.fishingGroup.destroy();
+        ui.fishingCastGroup.destroy();
+        mainObject.fishman.destroy();
+        maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[4], 12.5);
+        mainObject.player.x = -40;
+        mainObject.dom.x = -120;
+        mainObject.player.y = mainObject.dom.y = 80;
+        moveToPoint('player', 120, 100, false);
+        moveToPoint('dom', 80, 100, false);
+        mainConfig.moveFinishedEvent.player = function () {
+            mainConfig.lookAt.player = mainObject.dom;
+            mainConfig.lookAt.dom = mainObject.player;
+            if(!ui.dialogGroup.visible) {
+                ui.skip.setVisible(true);
+                ui.dialogGroup.setVisible(true);
+            }
+            dialog();
+        }
+        mainConfig.moveFinishedEvent.dom = function () {
+            mainObject.dom.play('dom-talk');
+        }
+    }
+    else if(chapterIdx === 5){
+        mainConfig.clear[4] = true;
+        mainObject.TitleEmitter.setVisible(true);
+        if(mainConfig.debugMode){
+            mainObject.TitleEmitter.start();
+            mainObject.TitleEmitter.setGravityX(20);
+            mainObject.TitleEmitter.setGravityY(40);
+            mainObject.TitleEmitter.setFrequency(200);
+            mainObject.TitleEmitter.setLifespan(12000);
+        }
+
+        mainObject.titlezone.x = -450;
+        mainObject.titlezone.y = -320;
+        mainObject.titlezone.height = 200;
+        setResult(mainConfig.gameResult);
+        function setResult(seed) {
+            object.list[9].setTexture('obj', 'tree-bottom' + seed).setScale(2).setOrigin(0, 1);
+            object.tree.setTexture('obj', 'tree-top' + seed).setScale(2).setOrigin(0);
+            object.treeshade.setTexture('obj', 'tree-shade' + seed).setScale(2).setOrigin(0);
+            if(seed === 0){
+                object.list[9].setPosition(158, 402);
+                object.tree.setPosition(82, 150);
+                object.treeshade.setPosition(88, 366);
+            }
+            else if(seed === 1) {
+                object.list[9].setPosition(158, 400);
+                object.tree.setPosition(122, 232);
+                object.treeshade.setPosition(120, 364);
+            }
+            else if(seed === 2){
+                object.list[9].setPosition(168, 386);
+                object.tree.setPosition(132, 282);
+                object.treeshade.setPosition(150, 370);
+            }
+        }
+
+        maps.navMesh.destroy();
+        setVisibleObjects(false, [ui.skip, mainObject.gambler, object.list[7], object.list[8]]);
+        setVisibleObjects(true, [mainObject.dom, object.tree, object.treeshade, object.list[9]]);
+        mainObject.gambler.destroy();
+        ui.gamblePos.destroy();
+        maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[5], 12.5);
+        mainObject.player.x = display.centerW + 20;
+        mainObject.dom.x = display.centerW - 20;
+        mainObject.player.y = mainObject.dom.y = -80;
+        moveToPoint('player', display.centerW + 20, 100, false);
+        moveToPoint('dom', display.centerW - 20, 100, false);
+        mainConfig.moveFinishedEvent.player = function () {
+            mainConfig.lookAt.player = mainObject.dom;
+            mainConfig.lookAt.dom = mainObject.player;
+            if(!ui.dialogGroup.visible) {
+                ui.skip.setVisible(true);
+                ui.dialogGroup.setVisible(true);
+            }
+            dialog();
+        }
+        mainConfig.moveFinishedEvent.dom = function () {
+            mainObject.dom.play('dom-talk');
+        }
+    }
+    for (let i = 0; i < mainConfig.clear.length; i++) {
+        savedData.clear[i] = mainConfig.clear[i];
+    }
+    writeUserData();
 }
 function setEndingData(total) {
     // 당신이 컴퓨터를 정지한 방법
@@ -3722,6 +3798,7 @@ const savedData = {
     detectCount: 0,
     seed : [],
     clear: [],
+    clearIdx: 0,
     trace: {
         engineer: {how: null, path: []},
         sheep: {sheep: 0, path: []},
@@ -3749,6 +3826,7 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         serverData.uid = user.uid;
         toggleCounter();
+        checkLevel();
     } else {
     }
 });
@@ -3790,6 +3868,24 @@ function readTotalSeed() {
         });
     });
 }
+function checkLevel() {
+    const db = getDatabase();
+    const uidRef = query(ref(db, 'users/'), orderByKey(), equalTo(serverData.uid));
+    onValue(uidRef, (snapshot) => {
+        if(snapshot.exists()){
+            snapshot.forEach(data => {
+                let clear = data.val().clearIdx;
+                status.chapterIdx = clear + 1;
+                if(status.chapterIdx > 0){
+                    mainConfig.askLevel = true;
+                }
+            })
+        }
+        mainConfig.askLevelDone = true;
+    }, {
+        onlyOnce: true
+    });
+}
 function readData(level) {
     mainConfig.signalReadCount++;
     if(mainConfig.signalReadCount > 20){
@@ -3810,8 +3906,8 @@ function readData(level) {
             const traceRef = query(ref(db, 'users/'), orderByChild('index'), equalTo(r));
             get(traceRef).then((snapshot) => {
                 if (snapshot.exists()) {
+                    serverData[level] = null;
                     snapshot.forEach(data => {
-                        const key = data.key;
                         const value = data.val();
                         if(value.trace){
                             if(value.trace[level]){
