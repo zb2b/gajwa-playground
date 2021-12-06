@@ -10,9 +10,9 @@ module.exports = {
         fallback: { "crypto": false }
     },
     devtool: 'source-map',
-    mode: "production",
-    //mode: "development",
-    //watch: true,
+    //mode: "production",
+    mode: "development",
+    watch: true,
     optimization: {
         providedExports: true
     }
