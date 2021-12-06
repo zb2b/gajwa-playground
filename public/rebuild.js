@@ -179,7 +179,84 @@ function preload() {
     // audio
     this.load.audio('bgm', 'audio/bgm.mp3');
 }
+function resetMainConfig() {
+    mainConfig.debugMode = false;
+    mainConfig.debugModeChapter = 0;
+    mainConfig.askLevel = false;
+    mainConfig.askLevelDone = false;
+    mainConfig.playerMovable  = false;
+    mainConfig.domFollow = false;
+    mainConfig.lookAt = {player: null, dom: null, engineer: null};
+    mainConfig.moveFinishedEvent = {player: null, dom: null, engineer: null};
+    mainConfig.pathCount = { player: 0, dom: 0, engineer: 0 };
+    mainConfig.titleFadeOut = null;
+    mainConfig.seedNum = 0;
+    mainConfig.pcTimerPushed = false;
+    mainConfig.pcTimer = 0;
+    mainConfig.pcCrackCount = 0;
+    mainConfig.pcRecordOn = false;
+    mainConfig.pcRecord = [];
+    mainConfig.sheepRecordOn = false;
+    mainConfig.sheepRecord = [];
+    mainConfig.clear = [false, false, false, false, false, false];
+    mainConfig.reward = [0, 0, 0, 0, 0];
+    mainConfig.livingSheep = 0;
+    mainConfig.sheepJump = null;
+    mainConfig.sheepLast = [];
+    mainConfig.sheepBlinkTimer = [null, null, null, null, null];
+    mainConfig.bridgeJumpingNow = false;
+    mainConfig.bridgeSelection = 0;
+    mainConfig.bridgeAnswer = [1, 2, 5, 7, 8];
+    mainConfig.bridgeFail = [0, 3, 4, 6, 9];
+    mainConfig.sheepEndPos = [
+        {x: 40, y: display.height - 80},
+        {x: 40, y: display.height - 20},
+        {x: 80, y: display.height - 50},
+        {x: 120, y: display.height - 20},
+        {x: 120, y: display.height - 80},
+    ];
+    mainConfig.deadSheep = [];
+    mainConfig.bridgePos = {
+        start: {x: display.centerW, y: 192},
+        end: {x: display.centerW + 60, y: display.height - 100}
+    };
+    mainConfig.fishingDone = false;
+    mainConfig.fishingbarGrav = null;
+    mainConfig.fishCasting = null;
+    mainConfig.fishingBarSize = 40;
+    mainConfig.fishingPower  = 0;
+    mainConfig.fishFloatTween = [];
+    mainConfig.fishingTimer = null;
+    mainConfig.fishingFailTimer = null;
+    mainConfig.fishWait = false;
+    mainConfig.fishingRodOn = false;
+    mainConfig.fishingNow = false;
+    mainConfig.fishIconContact = false;
+    mainConfig.fishPoint = 0;
+    mainConfig.fishRun = 0;
+    mainConfig.retryFishing = 0;
+    mainConfig.floatOnAir = false;
+    mainConfig.gambleSelection = 2;
+    mainConfig.gambleFirst = null;
+    mainConfig.gambleOpenHint = null;
+    mainConfig.startGamble = false;
+    mainConfig.minigameTween = null;
+    mainConfig.signalTween = null;
+    mainConfig.signalReadCount = 0;
+    mainConfig.signalGambleTween = [];
+    mainConfig.theend = false;
+    mainConfig.detectCount = 0;
+    mainConfig.forestSeed = 6;
+    mainConfig.gameResult = 0;
+    mainConfig.endingIdx = 0;
+    mainConfig.endingData = [];
+    mainConfig.endinglogTween = [];
+}
 function create() {
+    this.input.keyboard.addKey('Q').on('down', function(event) {
+        console.log('reset');
+        resetGame();
+    });
     mainObject.bgm = this.sound.add('bgm');
     mainObject.bgm.loop = true;
     mainObject.bgm.play();
@@ -311,11 +388,9 @@ function endingMotion() {
             });
     }
 }
-function resetGame(resetConfig) {
+function resetGame() {
+    resetMainConfig();
     game.scene.scenes[0].scene.restart();
-    Object.keys(mainConfig).forEach(function (v) {
-        mainConfig[v] = resetConfig[v];
-    });
     moveTargets.player = {x: 0, y: 0};
     moveTargets.dom = {x: 0, y: 0};
     moveTargets.engineer = {x: 0, y: 0};
@@ -1185,17 +1260,13 @@ function createUIObjects(scene) {
         ui.endingBtns[i].x = display.width;
     }
     ui.endingBtnsBox[0].on('pointerup', function () {
-        const resetConfig = {};
-        Object.keys(mainConfig).forEach(function (v) {
-            resetConfig[v] = mainConfig[v];
-        });
-        resetGame(resetConfig);
+        resetGame();
     })
     ui.endingBtnsBox[1].on('pointerup', function () {
         window.open('http://naver.me/FXHVvKBe')
     })
     ui.endingBtnsBox[2].on('pointerup', function () {
-        window.open('https://www.play-gajwa.com/')
+        window.open('https://www.instagram.com/playground_gajwa/')
     })
     ui.endingBtnsBox[3].on('pointerup', function () {
         window.open('https://www.instagram.com/myzy.space/');
@@ -3327,6 +3398,8 @@ function eventByIndex(){
             mainConfig.clear[5] = true;
             donateSeed();
             writeUserData();
+            mainConfig.playerMovable = false;
+            moveToPoint('player', mainObject.player.x, mainObject.player.y, false);
             let light = scene.add.rectangle(0,0, display.width, display.height, 0xffffff).setOrigin(0).setAlpha(0);
             ui.group.add(light);
             mainObject.dom.play('dom-power0');
