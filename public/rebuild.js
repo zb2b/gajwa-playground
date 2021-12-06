@@ -254,8 +254,7 @@ function resetMainConfig() {
 }
 function create() {
     this.input.keyboard.addKey('Q').on('down', function(event) {
-        console.log('reset');
-        resetGame();
+        //resetGame();
     });
     mainObject.bgm = this.sound.add('bgm');
     mainObject.bgm.loop = true;
