@@ -1176,6 +1176,7 @@ function createUIObjects(scene) {
                     dialog();
                 }
                 else {
+                    status.index = 32;
                     mainConfig.startGamble = false;
                     setTask(false);
                     ui.gambler.play('gambler-show');
@@ -3666,6 +3667,7 @@ function chapterTitle(skip) {
     if(status.chapterIdx === 5){
         mainSources.bgm.stop();
         mainSources.bgmMain.play();
+        mainSources.bgmMain.setVolume(1);
     }
     ui.skip.setVisible(false);
     ui.background.setVisible(true);
@@ -4077,8 +4079,8 @@ function readTotalSeed() {
 function checkLevel() {
     const db = getDatabase();
     const uidRef = query(ref(db, 'users/'), orderByKey(), equalTo(serverData.uid));
-    onValue(uidRef, (snapshot) => {
-        if(snapshot.exists()){
+    get(uidRef).then((snapshot) => {
+        if (snapshot.exists()) {
             snapshot.forEach(data => {
                 let clear = data.val().clearIdx;
                 status.chapterIdx = clear + 1;
@@ -4090,9 +4092,10 @@ function checkLevel() {
                 loadedData[data.key] = data.val();
             })
         }
+        else {
+        }
+    }).then(function () {
         mainConfig.askLevelDone = true;
-    }, {
-        onlyOnce: true
     });
 }
 function readData(level) {
