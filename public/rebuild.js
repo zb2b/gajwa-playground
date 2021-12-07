@@ -53,6 +53,8 @@ const mainConfig = {
     askLevel: false,
     askLevelDone: false,
 
+    audioStart: false,
+    playerStep: 0,
     playerMovable : false,
     domFollow: false,
 
@@ -177,8 +179,16 @@ function preload() {
     // particle
     this.load.atlas("leaf", "image/leaf.png", 'image/leaf.json');
     // audio
-    this.load.audio('bgm', 'audio/bgm.mp3');
+    this.load.audio('bgmMain', 'audio/bgm-theme.mp3');
+    this.load.audio('bgm', 'audio/bgm-0.mp3');
+    this.load.audio('air', 'audio/air.mp3');
+    this.load.audio('reel', 'audio/reel.mp3');
+    this.load.audioSprite('sfx', 'audio/sfx.json', [
+        'audio/sfx.ogg',
+        'audio/sfx.mp3'
+    ]);
 }
+const mainSources = {};
 function resetMainConfig() {
     mainConfig.debugMode = false;
     mainConfig.debugModeChapter = 0;
@@ -256,9 +266,11 @@ function create() {
     this.input.keyboard.addKey('Q').on('down', function(event) {
         //resetGame();
     });
-    mainObject.bgm = this.sound.add('bgm');
-    mainObject.bgm.loop = true;
-    mainObject.bgm.play();
+    mainSources.bgmMain = this.sound.add('bgmMain', {loop: true});
+    mainSources.bgm = this.sound.add('bgm', {volume: 0.9, loop: true});
+    mainSources.reel =  this.sound.add('reel', {volume: 0.9, loop: true});
+    mainSources.air =  this.sound.add('air', {volume: 0.5, loop: true});
+    mainSources.sfx = this.sound.addAudioSprite('sfx');
 
     status.chapterIdx = mainConfig.debugModeChapter;
     setLines(this);
@@ -412,6 +424,13 @@ function update() {
         each: Phaser.Math.Distance.Between(mainObject.player.x, mainObject.player.y, mainObject.dom.x, mainObject.dom.y),
     }
     if (mainObject.player.body.speed > 0){
+        if(mainConfig.playerStep < 10){
+            mainConfig.playerStep++;
+        }
+        else {
+            game.scene.scenes[0].sound.playAudioSprite('sfx', 'walk', {volume: 0.4});
+            mainConfig.playerStep = 0;
+        }
         if (dis.player < 4){
             // 목적지 도착시 플레이어 정지
             let playerPath = path.get('player');
@@ -481,6 +500,13 @@ function update() {
                         mainConfig.bridgePos.start.x,
                         mainConfig.bridgePos.start.y);
                     if(mainObject.sheeps[i].body.speed > 0){
+                        if(mainConfig.playerStep < 10){
+                            mainConfig.playerStep++;
+                        }
+                        else {
+                            game.scene.scenes[0].sound.playAudioSprite('sfx', 'walk', {volume: 0.4});
+                            mainConfig.playerStep = 0;
+                        }
                         if (sheepDis < 4){
                             mainObject.sheeps[i].body.reset(mainObject.sheeps[i].x, mainObject.sheeps[i].y);
                             mainObject.sheeps[i].play('sheep-stand');
@@ -522,6 +548,9 @@ function update() {
     }
     if(status.chapterIdx === 3){
         if(mainConfig.fishingNow){
+            let reelRate = 0.75 + ((mainConfig.fishPoint + 320)/640) * 0.5;
+            mainSources.reel.setRate(reelRate);
+
             if(mainConfig.fishPoint > 0){
                 ui.fishingCastbar.setFillStyle(Phaser.Display.Color.GetColor(0, 255, 0));
                 ui.fishingCastBoxB.setTexture('ui', 'catch').setOrigin(0.5);
@@ -577,7 +606,6 @@ function buildMap(scene) {
     // 타일맵 생성 <br>
     // 네비메쉬 : maps.navMesh <br>
     maps.tilemap = scene.add.tilemap("map");
-    maps.tileset = maps.tilemap.addTilesetImage("tileset", "tileset");
     maps.tilemap.createLayer("bg", maps.tileset);
     maps.objectLayer = [];
 
@@ -640,6 +668,7 @@ function createUIObjects(scene) {
     ui.esc.on('pointerdown', () => {
         ui.esc.setTexture('ui', 'escape1').setOrigin(0.5).setScale(3);
     }).on('pointerup', () => {
+        game.scene.scenes[0].sound.playAudioSprite('sfx', 'power');
         clearTimeout(timer.shaker);
         timer.shaker = undefined;
         ui.esc.x = display.centerW;
@@ -736,6 +765,13 @@ function createUIObjects(scene) {
                 if(index === 'power-') {
                     mainConfig.pcTimerPushed = true;
                     mainConfig.pcTimer = 0;
+                    game.scene.scenes[0].sound.playAudioSprite('sfx', 'power');
+                }
+                else if(index === 'enter-' || index === 'esc-' || index === 'danger-'){
+                    game.scene.scenes[0].sound.playAudioSprite('sfx', 'enter');
+                }
+                else{
+                    game.scene.scenes[0].sound.playAudioSprite('sfx', 'type');
                 }
             });
             keys[i].on('pointerup', function () {
@@ -1018,10 +1054,13 @@ function createUIObjects(scene) {
                     ui.task.text = "길게 눌러서 낚싯대를 던지자";
                     ui.fishingCastbar.width = 0;
                     ui.fishingCastbar.setOrigin(0.5);
+                    game.scene.scenes[0].sound.playAudioSprite('sfx', 'throw');
+                    game.scene.scenes[0].sound.playAudioSprite('sfx', 'water', {volume: 0.8});
                 }
             }
             else {
                 let power = [0, 150];
+                game.scene.scenes[0].sound.playAudioSprite('sfx', 'fishing', {volume: 0.8, rate: 0.5});
                 casting(power);
             }
             function casting(power) {
@@ -1118,9 +1157,11 @@ function createUIObjects(scene) {
                 if(mainConfig.gambleSelection === 1 && mainConfig.gambleOpenHint === 0) return;
                 if(mainConfig.gambleSelection > 0) mainConfig.gambleSelection--;
                 ui.gambleHand.x = ui.doorlist[mainConfig.gambleSelection].x + 6;
+                game.scene.scenes[0].sound.playAudioSprite('sfx', 'effect');
             }
             else if(key === 'select'){
                 // 첫 선택
+                game.scene.scenes[0].sound.playAudioSprite('sfx', 'btn');
                 if(mainConfig.gambleOpenHint === null){
                     mainConfig.gambleFirst = mainConfig.gambleSelection;
                     mainConfig.startGamble = false;
@@ -1165,7 +1206,6 @@ function createUIObjects(scene) {
                     signalToggle(false);
                     gambleCounter(mainConfig.gambleSelection);
                     dialog();
-                    writeUserData();
                 }
             }
             else if(key === 'right'){
@@ -1174,6 +1214,7 @@ function createUIObjects(scene) {
                     mainConfig.gambleSelection++;
                 }
                 ui.gambleHand.x = ui.doorlist[mainConfig.gambleSelection].x + 6;
+                game.scene.scenes[0].sound.playAudioSprite('sfx', 'effect');
             }
         });
         value.on('pointerout', function () {
@@ -1215,6 +1256,7 @@ function createUIObjects(scene) {
     }).on('pointerout', function () {
         this.setTexture('ui', 'signal-on').setOrigin(0.5, 1).setScale(3);
     }).on('pointerup', function () {
+        game.scene.scenes[0].sound.playAudioSprite('sfx', 'seed', {volume: 0.8});
         this.setTexture('ui', 'signal-on').setOrigin(0.5, 1).setScale(3);
         if(signalHelpBool) {
             ui.group.add(ui.signalHelpGroup);
@@ -1289,7 +1331,8 @@ function createUIObjects(scene) {
         let box = scene.add.rectangle(txt.x, txt.y + 10, loginfo[i].size, 36, 0x00ff00).setOrigin(0.5, 1);
         ui.logText[i] = scene.add.text(0, 110, '0', endingCount)
             .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(80);
-        ui.endingImage[i] = scene.add.sprite(0, -120, 'ending', i.toString()).setScale(2);
+
+        ui.endingImage[i] = scene.add.sprite(0, -120, 'ending', (i < 5) ? i.toString() : 'total0').setScale(2);
 
         ui.logList[i].add([ui.endingImage[i], box, txt, ui.logText[i]]);
     }
@@ -1402,6 +1445,7 @@ function setAskLevel(scene) {
         rows: [4, undefined, 4],
     }).setOrigin(0.5).setScale(2).setInteractive();
     ui.levelBtn[0].on('pointerup', function () {
+        game.scene.scenes[0].sound.playAudioSprite('sfx', 'beep');
        status.chapterIdx = 0;
         ui.levelBtn[0].setTint('0xffffff');
        ui.skip.setVisible(true);
@@ -1413,10 +1457,20 @@ function setAskLevel(scene) {
         ui.levelBtn[0].setTint('0xffffff');
     });
     ui.levelBtn[1].on('pointerup', function () {
+        game.scene.scenes[0].sound.playAudioSprite('sfx', 'beep');
        ui.skip.setVisible(true);
         ui.levelBtn[1].setTint('0xffffff');
         ui.levelGroup.setVisible(false);
+        // 이어하기
         chapterStart(status.chapterIdx);
+        mainSources.air.stop();
+        Object.keys(loadedData[loadedData.key]).forEach(function(v){
+            savedData[v] = loadedData[loadedData.key][v];
+            if(v === 'seed') mainConfig.reward = loadedData[loadedData.key].seed;
+            if(v === 'clear') mainConfig.clear = loadedData[loadedData.key].clear;
+            if(v === 'totalseed') mainConfig.seedNum = loadedData[loadedData.key].totalseed;
+        })
+
     }).on('pointerdown', function () {
         ui.levelBtn[1].setTint('0x00ff00');
     }).on('pointerout', function () {
@@ -1819,6 +1873,9 @@ function moveCharacter(character) {
     mainObject[character].setFlipX(mainObject[character].x - moveTargets[character].x > 0);
     if(next !== undefined) mainObject[character].setFlipX(mainObject[character].x - next > 0);
     Move(mainObject[character], moveTargets[character], speed);
+    if(character === 'player'){
+        mainConfig.playerStep = 8;
+    }
 }
 function moveToPoint(character, x, y, withPath){
     if(character === 'player'){
@@ -1863,6 +1920,9 @@ function jumpTo(jumper, target, action) {
         let idx = mainObject.sheeps.findIndex((obj) => a === obj);
         sheepTalk(idx, a);
     }
+    setTimeout(function () {
+        game.scene.scenes[0].sound.playAudioSprite('sfx', 'jump', {volume: 0.3});
+    }, Math.round(Math.random() * 240));
     scene.tweens.add({
         targets: a,
         x: path[2].x,
@@ -1937,6 +1997,7 @@ function fishingBack(catched) {
 }
 function fishingCastFloat(power) {
     // 낚시찌 던지기
+    game.scene.scenes[0].sound.playAudioSprite('sfx', 'throw');
     mainConfig.fishingRodOn = true;
     const scene = game.scene.scenes[0];
     for (let i = 0; i < mainConfig.fishFloatTween.length; i++) {
@@ -1974,6 +2035,7 @@ function fishingCastFloat(power) {
                 duration: speed * 0.5,
                 ease: Phaser.Math.Easing.Quartic.In,
                 onComplete: function () {
+                    game.scene.scenes[0].sound.playAudioSprite('sfx', 'water', {volume: 0.8});
                     ui.floatWater.setPosition(target.x, target.y);
                     ui.floatWater.setVisible(true);
                     ui.floatWater.play('float-water');
@@ -2047,6 +2109,12 @@ function typewriteText(object, txt, speed) {
             callback: () => {
                 object.text += txt[i]
                 ++i
+                if(i % 3 === 0){
+                    if(event.typing){
+                        let r = 0.7 + Math.random() * 0.5;
+                        game.scene.scenes[0].sound.playAudioSprite('sfx', 'talk', {volume: 0.75, rate: r});
+                    }
+                }
                 if(i < length){
                     event.typing = true;
                 }
@@ -2111,6 +2179,7 @@ function keyboardAction(key) {
     }
 }
 function pcShutDown(way) {
+    game.scene.scenes[0].sound.playAudioSprite('sfx', 'pcOff', {volume: 0.7});
     signalToggle(false);
     mainConfig.pcRecordOn = false;
     object.list[3].stop();
@@ -2132,7 +2201,6 @@ function pcShutDown(way) {
         .set('break', 5);
     mainConfig.reward[0] = reward.get(way);
     savedData.trace.engineer = {how: way, path: mainConfig.pcRecord};
-    writeUserData();
 
     line.story[1][14] = newline.get(way);
     let scene = game.scene.scenes[0];
@@ -2175,13 +2243,13 @@ function setReward(bool, count) {
         ui.rewardGroup.setVisible(true);
         ui.rewardMsg.text = '씨앗을 ' + count + '개 받았다!'
         mainConfig.seedNum += count;
+        game.scene.scenes[0].sound.playAudioSprite('sfx', 'btn2');
     }
     else ui.rewardGroup.setVisible(false);
     savedData.totalseed = mainConfig.seedNum;
     for (let i = 0; i < mainConfig.reward.length; i++) {
         savedData.seed[i] = mainConfig.reward[i];
     }
-    writeUserData();
 }
 function setGameScenes() {
     // 챕터에 따라 미니게임 씬 정렬
@@ -2195,6 +2263,8 @@ function setGameScenes() {
 function fishingFinish(success) {
     // 낚시 완료
     // success: 성공 여부
+    mainSources.reel.stop(mainSources.reel);
+    game.scene.scenes[0].sound.playAudioSprite('sfx', 'water', {volume: 0.8});
     ui.fishingCastbar.width = 0;
     ui.fishingCastbar.setOrigin(0.5);
     ui.fishingCastbar.setFillStyle(Phaser.Display.Color.GetColor(0, 255, 0));
@@ -2236,6 +2306,8 @@ function fishingFinish(success) {
     }
 }
 function startFishing() {
+    mainSources.reel.play(mainSources.reel);
+
     ui.fishingMark.setVisible(false);
     ui.fishingBar.body.setVelocity(0);
     ui.fishingBar.setPosition(display.centerW, display.centerH);
@@ -2268,6 +2340,7 @@ function startBite() {
         // 입질 시작
         ui.task.text = '한번 더 눌러서 낚시를 시작하자';
         ui.fishingFloat.play('float-bite');
+        game.scene.scenes[0].sound.playAudioSprite('sfx', 'fish', {volume: 0.7});
         createFloatWave(ui.fishingFloat);
         // 무반응할 경우 낚시 실패
         mainConfig.fishingFailTimer = setTimeout(function () {
@@ -2316,6 +2389,7 @@ function createParts(x, y, vx, vy) {
     let part =  ui.pcParts.get();
     if (!part) return;
     ui.effectGroup.add(part);
+    game.scene.scenes[0].sound.playAudioSprite('sfx', 'hit', {volume: 0.3});
     let r = Math.random();
     if(r > 0 && 0.25 < r) part.setTexture('keyboard', 'parts0');
     else if(r > 0.25 && 0.5 < r) part.setTexture('keyboard', 'parts1');
@@ -2442,7 +2516,6 @@ function selectBridge(index, bridge) {
             signalToggle(false);
             mainConfig.sheepRecordOn = false;
             savedData.trace.sheep = {sheep: mainObject.sheeps.length, path: mainConfig.sheepRecord};
-            writeUserData();
             let left = 0;
             f();
             function f() {
@@ -2569,6 +2642,10 @@ function checkSignal(arr) {
 
 // TODO 이벤트 메서드
 function skip() {
+    if(!mainConfig.audioStart){
+        mainSources.bgmMain.play();
+        mainConfig.audioStart = true;
+    }
     if(status.scene === 'title'){
         if(!mainConfig.askLevelDone){
             checkLevel();
@@ -2599,6 +2676,19 @@ function skip() {
                 ui.largeText.text = line.opening[status.index];
                 shakeObject(ui.largeText, 20, 20, 240);
                 status.index++;
+                mainSources.air.play();
+                mainSources.air.setVolume(0);
+                game.scene.scenes[0].tweens.addCounter({
+                    from: 0,
+                    to: 0.5,
+                    duration: 2000,
+                    repeat: 0,
+                    onUpdate: function (tween)
+                    {
+                        let value = tween.getValue();
+                        mainSources.air.setVolume(value);
+                    }
+                });
             }
         });
     }
@@ -2607,13 +2697,32 @@ function skip() {
         if(line.opening[status.index] === undefined) {
             if(mainConfig.titleFadeOut !== null) return;
             chapterTitle(mainConfig.debugMode);
+            game.scene.scenes[0].tweens.addCounter({
+                from: 1,
+                to: 0,
+                duration: 4000,
+                repeat: 0,
+                onUpdate: function (tween)
+                {
+                    let value = tween.getValue();
+                    mainSources.air.setVolume(value);
+                    mainSources.bgmMain.setVolume(value);
+                },
+                onComplete: function () {
+                    mainSources.air.stop();
+                    mainSources.bgmMain.stop();
+                    mainSources.bgm.play();
+                    mainSources.bgm.setVolume(0);
+                }
+            });
         }
         else {
             if(ui.title.visible) return;
             if(status.index === 3){
                 ui.esc.setVisible(true);
                 ui.skip.setVisible(false);
-                shakeObject(ui.esc, 6, 60, null);
+                clearTimeout(timer.shaker);
+                shakeObject(ui.esc, 6, 40, null);
             }
             ui.largeText.text = line.opening[status.index];
             shakeObject(ui.largeText, 20, 20, 240);
@@ -2700,6 +2809,14 @@ function eventByIndex(){
                 mainConfig.lookAt.player = mainObject.dom;
                 mainConfig.lookAt.dom = mainObject.player;
                 mainObject.dom.setVisible(true).play('dom-out');
+                mainObject.dom.on('animationupdate', function (anim, frame) {
+                    let key = mainObject.dom.anims.currentAnim.key;
+                    if(key === 'dom-out'){
+                        if(frame.textureFrame === '20'){
+                            game.scene.scenes[0].sound.playAudioSprite('sfx', 'jump', {volume: 0.5});
+                        }
+                    }
+                });
                 mainObject.dom.on('animationcomplete', function (a) {
                     if(a.key === 'dom-out'){
                         mainObject.dom.play('dom-talk');
@@ -3144,6 +3261,7 @@ function eventByIndex(){
                 ui.doorlist[door].on('animationcomplete', function (a) {
                     if(a.key === 'door-hint-open'){
                         setTimeout(function () {
+                            game.scene.scenes[0].sound.playAudioSprite('sfx', 'btn2');
                             ui.gambleResult[door].setVisible(true);
                             if(!ui.dialogGroup.visible) {
                                 ui.skip.setVisible(true);
@@ -3178,6 +3296,7 @@ function eventByIndex(){
             ui.doorlist[mainConfig.gambleSelection].on('animationcomplete', function (a) {
                 setTimeout(function () {
                     // 몬티홀 완료
+                    game.scene.scenes[0].sound.playAudioSprite('sfx', 'btn2');
                     ui.gambleResult[mainConfig.gambleSelection].setVisible(true);
                     if(!ui.dialogGroup.visible) {
                         ui.skip.setVisible(true);
@@ -3210,7 +3329,6 @@ function eventByIndex(){
                             mainConfig.seedNum -= count;
                             mainConfig.reward[3] = -count;
                             savedData.seed[3] = mainConfig.reward[3];
-                            writeUserData();
                         }
                     }
                 })
@@ -3368,13 +3486,13 @@ function eventByIndex(){
                 let seedNum = Math.ceil(Math.random() * 3);
                 setTimeout(() => ui.skip.setVisible(true), 400);
                 ui.rewardGroup.setVisible(true);
+                game.scene.scenes[0].sound.playAudioSprite('sfx', 'btn2');
                 ui.rewardMsg.text = '씨앗을 ' + seedNum + '개 발견했다!'
                 mainConfig.seedNum += seedNum;
                 savedData.totalseed = mainConfig.seedNum;
                 for (let i = 0; i < mainConfig.reward.length; i++) {
                     savedData.seed[i] = mainConfig.reward[i];
                 }
-                writeUserData();
             }
             setTimeout(function () {
                 let col = scene.physics.add.overlap(mainObject.player, mainObject.dom, function () {
@@ -3545,6 +3663,10 @@ function setBackground(idx) {
 }
 // TODO 씬 제어
 function chapterTitle(skip) {
+    if(status.chapterIdx === 5){
+        mainSources.bgm.stop();
+        mainSources.bgmMain.play();
+    }
     ui.skip.setVisible(false);
     ui.background.setVisible(true);
     ui.dark.setVisible(false);
@@ -3602,8 +3724,22 @@ function chapterStart(chapterIdx) {
     setVisibleObjects(false, [mainObject.particles, mainObject.engineer, mainObject.man, mainObject.fishman, mainObject.gambler, ui.smoke, ui.bridge]);
     setVisibleObjects(false, object.list);
     setVisibleObjects(false, mainObject.sheeps);
+    for (let i = 0; i < mainConfig.clear.length; i++) {
+        savedData.clear[i] = mainConfig.clear[i];
+    }
     writeUserData();
     if(chapterIdx === 0){
+        game.scene.scenes[0].tweens.addCounter({
+            from: 0,
+            to: 1,
+            duration: 2400,
+            repeat: 0,
+            onUpdate: function (tween)
+            {
+                let value = tween.getValue();
+                mainSources.bgm.setVolume(value);
+            }
+        });
         setVisibleObjects(true, [ui.skip, mainObject.particles, object.list[0], object.list[1], object.list[2], ui.smoke]);
         maps.navMesh = scene.navMeshPlugin.buildMeshFromTiled("mesh", maps.objectLayer[0], 12.5);
         zoomOut(mainConfig.debugMode);
@@ -3798,10 +3934,6 @@ function chapterStart(chapterIdx) {
             mainObject.dom.play('dom-talk');
         }
     }
-    for (let i = 0; i < mainConfig.clear.length; i++) {
-        savedData.clear[i] = mainConfig.clear[i];
-    }
-    writeUserData();
 }
 function setEndingData(total) {
     // 당신이 컴퓨터를 정지한 방법
@@ -3878,6 +4010,9 @@ const savedData = {
     },
     time : null
 }
+const loadedData = {
+
+}
 
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
@@ -3951,6 +4086,8 @@ function checkLevel() {
                 if(status.chapterIdx > 0){
                     mainConfig.askLevel = true;
                 }
+                loadedData.key = data.key;
+                loadedData[data.key] = data.val();
             })
         }
         mainConfig.askLevelDone = true;

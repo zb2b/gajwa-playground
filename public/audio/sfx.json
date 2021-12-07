@@ -1,0 +1,98 @@
+{
+  "resources": [
+    "/audio/sfx.ogg",
+    "/audio/sfx.mp3"
+  ],
+  "spritemap": {
+    "walk": {
+      "start": 0,
+      "end": 0.2,
+      "loop": false
+    },
+    "jump": {
+      "start": 0.5,
+      "end": 1,
+      "loop": false
+    },
+    "talk": {
+      "start": 1,
+      "end": 1.4,
+      "loop": false
+    },
+    "hit": {
+      "start": 1.5,
+      "end": 1.7,
+      "loop": false
+    },
+    "type": {
+      "start": 2,
+      "end": 2.5,
+      "loop": false
+    },
+    "power": {
+      "start": 2.5,
+      "end": 3,
+      "loop": false
+    },
+    "enter": {
+      "start": 3,
+      "end": 4,
+      "loop": false
+    },
+    "throw": {
+      "start": 4,
+      "end": 4.5,
+      "loop": false
+    },
+    "water": {
+      "start": 4.75,
+      "end": 6,
+      "loop": false
+    },
+    "fish": {
+      "start": 6,
+      "end": 6.5,
+      "loop": false
+    },
+    "btn": {
+      "start": 6.5,
+      "end": 7,
+      "loop": false
+    },
+    "effect": {
+      "start": 7,
+      "end": 7.5,
+      "loop": false
+    },
+    "seed": {
+      "start": 7.5,
+      "end": 8.1,
+      "loop": false
+    },
+    "pcOff": {
+      "start": 8.5,
+      "end": 11,
+      "loop": false
+    },
+    "btn2": {
+      "start": 11,
+      "end": 11.5,
+      "loop": false
+    },
+    "tick": {
+      "start": 11.5,
+      "end": 12,
+      "loop": false
+    },
+    "beep": {
+      "start": 12,
+      "end": 12.5,
+      "loop": false
+    },
+    "fishing": {
+      "start": 12.5,
+      "end": 13,
+      "loop": false
+    }
+  }
+}

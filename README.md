@@ -10,7 +10,7 @@ Based on Phaser.js
 - server networking available.
 
 ### Version info
-- ver release 0.1
+- ver release 0.1.1
 
 ### Main script
 - rebuild.js
