@@ -17,7 +17,7 @@
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :118, "h" :56 },
         "sourceSize": { "w" :118, "h" :56 },
-        "pivot":   { "x": 0.5, "y" :0.5 }
+        "pivot":  { "x": 0.5, "y" :0.5 }
   }
   ,
   {
@@ -27,7 +27,7 @@
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :104, "h" :118 },
         "sourceSize": { "w" :104, "h" :118 },
-        "pivot":  { "x": 0.5, "y" :0.5 }
+        "pivot": { "x": 0.5, "y" :0.5 }
   }
   ,
   {
@@ -67,6 +67,26 @@
         "trimmed": true,
         "spriteSourceSize":  { "x": 0, "y" :0, "w" :114, "h" :133 },
         "sourceSize": { "w" :114, "h" :133 },
+        "pivot":  { "x": 0.5, "y" :0.5 }
+  }
+  ,
+  {
+        "filename": "large",
+        "frame":  { "x": 148, "y" :300, "w" :146, "h" :111 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :146, "h" :111 },
+        "sourceSize": { "w" :146, "h" :111 },
+        "pivot":  { "x": 0.5, "y" :0.5 }
+  }
+  ,
+  {
+        "filename": "small",
+        "frame":  { "x": 0, "y" :312, "w" :145, "h" :107 },
+        "rotated": false,
+        "trimmed": true,
+        "spriteSourceSize":  { "x": 0, "y" :0, "w" :145, "h" :107 },
+        "sourceSize": { "w" :145, "h" :107 },
         "pivot":  { "x": 0.5, "y" :0.5 }
   }
   ]

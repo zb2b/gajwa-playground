@@ -31,8 +31,7 @@ const config = {
                 start: true
             },
         ]
-    },
-    mode: Phaser.Scale.FIT,
+    }
 };
 const game = new Phaser.Game(config);
 const mainObject = {
@@ -161,7 +160,6 @@ function preload() {
     this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
 
     // UI
-
     this.load.image("frame", "image/ending-frame.png");
     this.load.spritesheet('title', 'image/title.png', { frameWidth: 180, frameHeight: 390, endFrame: 1 });
     this.load.spritesheet('signal', 'image/signal.png', { frameWidth: 16, frameHeight: 16, endFrame: 12 });
@@ -337,6 +335,15 @@ function create() {
             }
         }
         if(path.get('player').length < 1) return;
+        else {
+            for (let i = 0; i < path.get('player').length; i++) {
+                let p = path.get('player')[i];
+                if(p.x < 0 || p.x > display.width || p.y < 0 || p.y > display.height) {
+                    path.set('player', maps.navMesh.findPath(mainObject.player, { x: mainObject.player.x, y: mainObject.player.y }));
+                    break;
+                }
+            }
+        }
         moveCharacter('player');
     });
 }
@@ -401,6 +408,7 @@ function endingMotion() {
 }
 function resetGame() {
     resetMainConfig();
+    mainSources.bgmMain.stop();
     game.scene.scenes[0].scene.restart();
     moveTargets.player = {x: 0, y: 0};
     moveTargets.dom = {x: 0, y: 0};
@@ -448,10 +456,6 @@ function update() {
         // 플레이어와 멀때 따라가기 경로
         if(dis.each > 80 && mainConfig.domFollow){
             moveToPoint('dom', mainObject.player.x, mainObject.player.y, true);
-            if(mainObject.player.x > display.width || mainObject.player.x < 0){
-                mainObject.player.setPosition(mainObject.dom.x, mainObject.dom.y - 20);
-                mainObject.player.body.reset(mainObject.player.x, mainObject.player.y);
-            }
         }
     }
     if (mainObject.dom.body.speed > 0){
@@ -696,7 +700,7 @@ function createUIObjects(scene) {
     ui.dark = scene.add.rectangle(display.centerW, display.centerH, display.width, display.height, 0x000000).setVisible(false);
     ui.title = scene.add.sprite(0, 0).play('title').setOrigin(0).setScale(2);
     ui.largeText = scene.add.text(display.centerW, display.centerH, '', fontConfig)
-        .setAlign('center').setOrigin(0.5).setVisible(false);
+        .setAlign('center').setOrigin(0.5).setResolution(10).setVisible(false);
     ui.mark = scene.add.sprite(mainObject.dom.x - 12, mainObject.dom.y + 8, 'mark').play('mark')
         .setOrigin(1).setScale(2).setVisible(false);
 
@@ -724,7 +728,7 @@ function createUIObjects(scene) {
     ui.pcPwList = [];
     ui.pcInfo = '';
     for (let i = 0; i < 4; i++) {
-        ui.pcPwList[i] = scene.add.text(114 + i * 36, 184, '*', fontConfig).setFontSize(48).setVisible(false);
+        ui.pcPwList[i] = scene.add.text(114 + i * 36, 184, '*', fontConfig).setResolution(10).setFontSize(48).setVisible(false);
     }
     ui.pcPw.add(ui.pcPwList);
     ui.keyboard = scene.add.container();
@@ -1229,7 +1233,7 @@ function createUIObjects(scene) {
     let helpText = '[흔적 감지하기]\n\n당신은 다른 시공간의 존재이기 때문에\n다른 세계의 흔적을 감지할 수 있는\n특별한 능력이 있습니다.' +
         '\n\n누군가의 흔적을 통해 상황을 추측할 수 있으며\n이 능력을 사용할 수 있는 상황이 되면\n이 아이콘이 나타납니다.';
     ui.signalHelp = scene.add.text(display.centerW, display.centerH, helpText, fontConfig)
-        .setAlign('center').setOrigin(0.5).setFontSize(16).setLineSpacing(8);
+        .setAlign('center').setOrigin(0.5).setResolution(10).setFontSize(16).setLineSpacing(8);
     ui.signalHelpGroup = scene.add.container().add([ui.signalHelpBox, ui.signalHelp]);
     ui.signalBtn = scene.add.sprite(display.centerW ,display.height + 120, 'ui', 'signal-on').setOrigin(0.5, 1).setScale(3).setInteractive();
     ui.signalGamblerBox = scene.add.rectangle(0, 0, display.width, display.height, 0x000000, 0.7).setOrigin(0).setInteractive();
@@ -1296,7 +1300,7 @@ function createUIObjects(scene) {
     ]
     for (let i = 0; i < 4; i++) {
         let txt = scene.add.text(display.centerW, display.centerH + (i * 60) - 80, BtnText[i].text, endingFont)
-            .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
+            .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16).setResolution(10);
         ui.endingBtnsBox[i] = scene.add.rectangle(txt.x, txt.y + 20, BtnText[i].size, 54, 0x00ff00).setOrigin(0.5, 1).setInteractive();
         ui.endingBtns[i] = scene.add.container().add([ui.endingBtnsBox[i], txt]);
         ui.endingBtns[i].x = display.width;
@@ -1318,30 +1322,31 @@ function createUIObjects(scene) {
     ui.logText = [];
     ui.endingImage = [];
     const loginfo = [
-        {text: '당신이 컴퓨터를 정지한 방법', size: 260},
-        {text: '당신이 구한 한 양의 수', size: 200},
-        {text: '당신이 낚은 물고기의 수', size: 200},
-        {text: '당신이 시공간을 감지한 횟수', size: 240},
-        {text: '당신이 기부한 씨앗의 수', size: 200},
-        {text: '시공간을 넘어 모인 씨앗의 수', size: 260},
+        {text: '당신이 컴퓨터를 정지한 방법'},
+        {text: '당신이 구한 한 양의 수'},
+        {text: '당신이 낚은 물고기의 수'},
+        {text: '당신이 시공간을 감지한 횟수'},
+        {text: '당신이 기부한 씨앗의 수'},
+        {text: '시공간을 넘어 모인 씨앗의 수'},
     ];
     for (let i = 0; i < 6; i++) {
         ui.logList[i] = scene.add.container().setPosition(display.centerW + i * display.width, display.centerH);
-        let txt = scene.add.text(0, 220, loginfo[i].text, endingFont)
+        let txt = scene.add.text(0, 220, loginfo[i].text, endingFont).setResolution(10)
             .setAlign('left').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(16);
-        let box = scene.add.rectangle(txt.x, txt.y + 10, loginfo[i].size, 36, 0x00ff00).setOrigin(0.5, 1);
-        ui.logText[i] = scene.add.text(0, 110, '0', endingCount)
+        let box = scene.add.sprite(8.5, 146, 'ending', 'small').setScale(2);
+        if(i === 0 || i === 5) box.setTexture('ending', 'large').setPosition(8, 141.5);
+        ui.logText[i] = scene.add.text(2, 160, '0', endingCount).setResolution(10)
             .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(80);
 
-        ui.endingImage[i] = scene.add.sprite(0, -120, 'ending', (i < 5) ? i.toString() : 'total0').setScale(2);
+        ui.endingImage[i] = scene.add.sprite(2, -120, 'ending', (i < 5) ? i.toString() : 'total0').setScale(2);
 
         ui.logList[i].add([ui.endingImage[i], box, txt, ui.logText[i]]);
     }
-    ui.endingImage[0].setPosition(0, -100);
-    ui.endingImage[5].play('total').setScale(2).setPosition(0, -160);
-    ui.logText[0].setFontSize(32).setPosition(0, 80);
+    ui.endingImage[0].setPosition(2, -110);
+    ui.endingImage[5].play('total').setScale(2).setPosition(0, -146);
+    ui.logText[0].setFontSize(32).setPosition(0, 154);
     let num = ['', '마리', '마리', '번', '개', '개'];
-    ui.theend = scene.add.text(display.centerW, display.centerH + 16, 'THE END', endingCount)
+    ui.theend = scene.add.text(display.centerW, display.centerH + 16, 'THE END', endingCount).setResolution(10)
         .setAlign('center').setOrigin(0.5, 1).setLineSpacing(8).setFontSize(32);
 
     ui.endingLog = scene.add.container().add(ui.logList).setPosition(display.width, 0);
@@ -1386,9 +1391,10 @@ function createUIObjects(scene) {
         rows: [8, undefined, 8],
     }).setOrigin(0.5, 1).setScale(2);
     ui.dialog = scene.add.text(30, display.height - 160, '', fontConfig).setFontSize(16).setLineSpacing(4);
+    ui.dialog.setResolution(10);
     ui.dialogGroup.add([ui.dialogBox, ui.dialog]).setVisible(false);
     ui.taskGroup = scene.add.container();
-    ui.task = scene.add.text(42, 34, '', fontConfig).setFontSize(16).setLineSpacing(4);
+    ui.task = scene.add.text(42, 34, '', fontConfig).setFontSize(16).setLineSpacing(4).setResolution(10);
     ui.taskBox = scene.add.rexNinePatch({
         x: display.centerW, y: 64,
         width: (display.width - 20) * 0.5, height: 32,
@@ -1407,7 +1413,7 @@ function createUIObjects(scene) {
         columns: [8, undefined, 8],
         rows: [8, undefined, 8],
     }).setOrigin(0).setScale(2);
-    ui.rewardMsg = scene.add.text(120, 32, '', fontConfig).setFontSize(16).setOrigin(0.5).setLineSpacing(4);
+    ui.rewardMsg = scene.add.text(120, 32, '', fontConfig).setResolution(10).setFontSize(16).setOrigin(0.5).setLineSpacing(4);
     ui.rewardGroup = scene.add.container().setPosition(display.centerW - 120, display.centerH - 40).setVisible(false);
     ui.rewardGroup.add([ui.rewardBox, ui.rewardMsg]);
 
@@ -2648,10 +2654,6 @@ function skip() {
         mainConfig.audioStart = true;
     }
     if(status.scene === 'title'){
-        if(!mainConfig.askLevelDone){
-            checkLevel();
-            return;
-        }
         if(mainConfig.debugMode){
             mainObject.TitleEmitter.stop();
             mainObject.TitleEmitter.setVisible(false);
@@ -2661,6 +2663,12 @@ function skip() {
             ui.dark.setVisible(true);
             checkLevelUI();
             return;
+        }
+        else {
+            if(!mainConfig.askLevelDone){
+                checkLevel();
+                return;
+            }
         }
         status.scene = 'opening';
         mainObject.TitleEmitter.setGravityX(2000);
@@ -3697,6 +3705,7 @@ function chapterTitle(skip) {
     });
 }
 function checkLevelUI(){
+    if(mainConfig.debugMode) return;
     if(mainConfig.askLevel){
         ui.levelGroup.setVisible(true);
         ui.skip.setVisible(false);
