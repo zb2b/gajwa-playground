@@ -150,40 +150,40 @@ const status = {
 function preload() {
     // TODO 프리로드
     // data
-    this.load.json('text', 'data/text.json');
+    this.load.json('text', 'gajwa/data/text.json');
     // tile map
-    this.load.tilemapTiledJSON("map", "map/map.json");
+    this.load.tilemapTiledJSON("map", "gajwa/map/map.json");
     // sprites
-    this.load.aseprite('character', 'image/characters.png', 'image/characters.json');
-    this.load.aseprite('fishing-player', 'image/fishing-player.png', 'image/fishing-player.json');
-    this.load.aseprite('stones', 'image/stones.png', 'image/stones.json');
-    this.load.atlas('obj', 'image/obj.png', 'image/obj.json');
+    this.load.aseprite('character', 'gajwa/image/characters.png', 'gajwa/image/characters.json');
+    this.load.aseprite('fishing-player', 'gajwa/image/fishing-player.png', 'gajwa/image/fishing-player.json');
+    this.load.aseprite('stones', 'gajwa/image/stones.png', 'gajwa/image/stones.json');
+    this.load.atlas('obj', 'gajwa/image/obj.png', 'gajwa/image/obj.json');
 
     // UI
-    this.load.image("frame", "image/ending-frame.png");
-    this.load.spritesheet('title', 'image/title.png', { frameWidth: 180, frameHeight: 390, endFrame: 1 });
-    this.load.spritesheet('signal', 'image/signal.png', { frameWidth: 16, frameHeight: 16, endFrame: 12 });
-    this.load.spritesheet('bg', 'image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 12 });
-    this.load.atlas('minigame', 'image/minigame.png', 'image/minigame.json');
-    this.load.spritesheet('pc-err', 'image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
-    this.load.spritesheet('float-water', 'image/float-water.png', { frameWidth: 64, frameHeight: 32, endFrame: 18 });
-    this.load.spritesheet('fish-icon', 'image/fish-icon.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
-    this.load.spritesheet('doors', 'image/doors.png', { frameWidth: 35, frameHeight: 48, endFrame: 16 });
-    this.load.atlas('keyboard', 'image/keyboard.png', 'image/keyboard.json');
-    this.load.atlas('ui', 'image/ui.png', 'image/ui.json');
-    this.load.atlas('ending', 'image/ending.png', 'image/ending.json');
+    this.load.image("frame", "gajwa/image/ending-frame.png");
+    this.load.spritesheet('title', 'gajwa/image/title.png', { frameWidth: 180, frameHeight: 390, endFrame: 1 });
+    this.load.spritesheet('signal', 'gajwa/image/signal.png', { frameWidth: 16, frameHeight: 16, endFrame: 12 });
+    this.load.spritesheet('bg', 'gajwa/image/backgrounds.png', { frameWidth: 180, frameHeight: 340, endFrame: 12 });
+    this.load.atlas('minigame', 'gajwa/image/minigame.png', 'gajwa/image/minigame.json');
+    this.load.spritesheet('pc-err', 'gajwa/image/pc-err.png', { frameWidth: 96, frameHeight: 80, endFrame: 5 });
+    this.load.spritesheet('float-water', 'gajwa/image/float-water.png', { frameWidth: 64, frameHeight: 32, endFrame: 18 });
+    this.load.spritesheet('fish-icon', 'gajwa/image/fish-icon.png', { frameWidth: 16, frameHeight: 16, endFrame: 1 });
+    this.load.spritesheet('doors', 'gajwa/image/doors.png', { frameWidth: 35, frameHeight: 48, endFrame: 16 });
+    this.load.atlas('keyboard', 'gajwa/image/keyboard.png', 'gajwa/image/keyboard.json');
+    this.load.atlas('ui', 'gajwa/image/ui.png', 'gajwa/image/ui.json');
+    this.load.atlas('ending', 'gajwa/image/ending.png', 'gajwa/image/ending.json');
     // plugins
-    this.load.plugin('rexninepatchplugin', 'rexninepatchplugin.min.js', true);
+    this.load.plugin('rexninepatchplugin', 'gajwa/rexninepatchplugin.min.js', true);
     // particle
-    this.load.atlas("leaf", "image/leaf.png", 'image/leaf.json');
+    this.load.atlas("leaf", "gajwa/image/leaf.png", 'gajwa/image/leaf.json');
     // audio
-    this.load.audio('bgmMain', 'audio/bgm-theme.mp3');
-    this.load.audio('bgm', 'audio/bgm-0.mp3');
-    this.load.audio('air', 'audio/air.mp3');
-    this.load.audio('reel', 'audio/reel.mp3');
-    this.load.audioSprite('sfx', 'audio/sfx.json', [
-        'audio/sfx.ogg',
-        'audio/sfx.mp3'
+    this.load.audio('bgmMain', 'gajwa/audio/bgm-theme.mp3');
+    this.load.audio('bgm', 'gajwa/audio/bgm-0.mp3');
+    this.load.audio('air', 'gajwa/audio/air.mp3');
+    this.load.audio('reel', 'gajwa/audio/reel.mp3');
+    this.load.audioSprite('sfx', 'gajwa/audio/sfx.json', [
+        'gajwa/audio/sfx.ogg',
+        'gajwa/audio/sfx.mp3'
     ]);
 }
 const mainSources = {};
