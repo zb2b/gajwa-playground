@@ -18,6 +18,6 @@ app.use(function (req, res, next) {
     res.status(404).redirect('/');
 });
 
-app.listen(3000, function () {
+app.listen(3001, function () {
     console.log('Node.js app listening');
 });
